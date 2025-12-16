@@ -1,0 +1,16 @@
+services:
+  dash-app:
+    build: ./DockerfileDeploy  
+    container_name: mi_app_ventanas
+    ports:
+      - "8050:8050"
+    volumes:
+      - ../app:/app
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '2.0'
+        reservations:
+          memory: 3G
+    restart: unless-stopped

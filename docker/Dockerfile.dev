@@ -1,0 +1,15 @@
+# DockerfileDebug
+FROM python:3.12.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# 1. Instalamos dependencias primero.
+COPY ./app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# NOTA: No copiamos la carpeta 'app' aquí. 
+# Lo haremos mediante un volumen en el docker-compose para desarrollo.
+# Tampoco ponemos CMD, lo definiremos en el compose.

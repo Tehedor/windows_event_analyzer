@@ -1,0 +1,22 @@
+paths:
+  dataset_raw: datasets/raw/03_windows_dataset_tobs60_tpred30_tlead10.parquet
+  dataset_dicctionary: datasets/raw/02_EventDictionary_notebook.json
+  dataset_processed: datasets/processed/03_windows_dataset_tobs60_tpred30_tlead10_indexed.parquet
+  output_dir: output/queries
+
+columns:
+  observation:
+    start: "observation_start(t0)"
+    end: "observation_end"
+    events: "observation_events"
+
+  prediction:
+    start: "prediction_start"
+    end: "prediction_end"
+    events: "prediction_events"
+
+processing:
+  separator: ","
+  index_columns:
+    observation: "obs_seq"
+    prediction: "pred_seq"

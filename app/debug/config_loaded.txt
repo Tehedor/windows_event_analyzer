@@ -1,0 +1,3 @@
+CONFIG FINAL
+
+{'paths': {'dataset_raw': '/home/tehe/Work/tfm/windows_app/app/datasets/raw/03_windows_dataset_tobs60_tpred30_tlead10.parquet', 'dataset_processed': '/home/tehe/Work/tfm/windows_app/app/datasets/processed/03_windows_dataset_tobs60_tpred30_tlead10_indexed.parquet', 'output_dir': '/home/tehe/Work/tfm/windows_app/app/output/queries'}, 'columns': {'observation': {'start': 'observation_start(t0)', 'end': 'observation_end', 'events': 'observation_events'}, 'prediction': {'start': 'prediction_start', 'end': 'prediction_end', 'events': 'prediction_events'}}, 'processing': {'separator': ',', 'index_columns': {'observation': 'obs_seq', 'prediction': 'pred_seq'}}}
