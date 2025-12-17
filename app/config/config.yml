@@ -1,4 +1,5 @@
 paths:
+  components_config: datasets/components.yml
   dataset_raw: datasets/raw/03_windows_dataset_tobs60_tpred30_tlead10.parquet
   dataset_dicctionary: datasets/raw/02_EventDictionary_notebook.json
   dataset_processed: datasets/processed/03_windows_dataset_tobs60_tpred30_tlead10_indexed.parquet
@@ -20,3 +21,5 @@ processing:
   index_columns:
     observation: "obs_seq"
     prediction: "pred_seq"
+
+percentiles: [Q05, Q10, Q20, Q50, Q90, Q95]

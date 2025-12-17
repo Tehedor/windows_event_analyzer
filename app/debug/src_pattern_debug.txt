@@ -1,3 +1,0 @@
-SRC PATTERN PROCESADO
-
-QueryPattern(raw='475,484,*', regex='^475,484,.*', prefix=None, target='observation')

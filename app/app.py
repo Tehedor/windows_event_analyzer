@@ -5,6 +5,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from numpy import save
+
+from debug.debug import save_debug_info
+
 from helpers._1_config_loader import load_config
 from helpers._2_preprocessor import load_or_preprocess_dataset
 from helpers._3_input_controller import parse_pattern
@@ -12,10 +16,10 @@ from helpers._4_query_engine import run_query
 from helpers._5_output_writer import save_results
 
 # 🆕 Visualización
-from helpers._7_visualizer import plot_windows, load_components
-from helpers._6_event_dictionary import load_event_dictionary
+from helpers._6_event_dictionary import build_event_dictionary
+from helpers._7_text_renderer import render_windows_text
 
-MODE_VIEW = False
+MODE_VIEW = True
 
 # -------------------------------------------------------------------------
 # CLI
@@ -126,26 +130,42 @@ def main():
     # 🆕 7️⃣ Visualización
     # ---------------------------------------------------------------------
     if MODE_VIEW is True:
-        try:
-            event_dict = load_event_dictionary(
-                Path(config["paths"]["dataset_dicctionary"])
-            )
+        # event_dict = build_event_dictionary(
+        #     Path(config["paths"]["dataset_dicctionary"])
+        # )
+        event_dict = build_event_dictionary(config)
+# content_source: Any, filename: Optional[str] = "info_debug", directory: Optional[Path] = None, head: Optional[str] = None
+        save_debug_info(
+            content_source=event_dict,
+            filename="event_dictionary_debug",
+            head="Diccionario de eventos cargado"
+        )
 
-            components_cfg = load_components(
-                Path("datasets/components.yml")
-            )
+        render_windows_text(
+            df=result_df,
+            event_dict=event_dict,
+            config=config,
+            limit=20,
+            offset=0,
+        )
 
-            output_image = output_parquet.with_suffix(".png")
+        # try:
 
-            plot_windows(
-                df=result_df,
-                event_id_map=event_dict,
-                components_cfg=components_cfg,
-                output_path=output_image
-            )
-        except Exception as e:
-            print(f"[WARN] No se pudo generar la visualización: {e}")
-            output_image = None
+            # components_cfg = load_components(
+            #     Path("datasets/components.yml")
+            # )
+
+            # output_image = output_parquet.with_suffix(".png")
+
+            # plot_windows(
+            #     df=result_df,
+            #     event_id_map=event_dict,
+            #     components_cfg=components_cfg,
+            #     output_path=output_image
+            # )
+        # except Exception as e:
+        #     print(f"[WARN] No se pudo generar la visualización: {e}")
+        #     output_image = None
 
         # 8️⃣ Feedback
         elapsed = (datetime.now() - start_time).total_seconds()
@@ -154,8 +174,6 @@ def main():
         print(f"  Coincidencias encontradas: {len(result_df)}")
         print(f"  Parquet generado: {output_parquet}")
 
-        if output_image:
-            print(f"  Imagen generada: {output_image}")
 
         print(f"  Tiempo total: {elapsed:.3f}s")
 

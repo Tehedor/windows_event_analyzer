@@ -1,33 +1,40 @@
 # app/helpers/_1_config_loader.py
-from json import load
+# app/helpers/_1_config_loader.py
+
 import os
 from pathlib import Path
-from typing import Dict, Any
-from dotenv import load_dotenv
+from typing import Dict, Any, List
 
+from dotenv import load_dotenv
 import yaml
 
 
-# Variables de entorno soportadas (clave ENV -> clave interna)
+# -------------------------------------------------------------------------
+# Variables de entorno soportadas (ENV -> ruta en config)
+# -------------------------------------------------------------------------
+
 ENV_OVERRIDES = {
     "DATASET_RAW_PATH": ("paths", "dataset_raw"),
     "DATASET_PROCESSED_PATH": ("paths", "dataset_processed"),
     "OUTPUT_DIR": ("paths", "output_dir"),
+    "DATASET_DICTIONARY_PATH": ("paths", "dataset_dicctionary"),
 
     "OBS_EVENTS_COLUMN": ("columns", "observation", "events"),
     "PRED_EVENTS_COLUMN": ("columns", "prediction", "events"),
 }
 
 
+# -------------------------------------------------------------------------
+# API principal
+# -------------------------------------------------------------------------
+
 def load_config(config_path: Path | None = None) -> Dict[str, Any]:
     """
     Carga la configuración del proyecto siguiendo esta prioridad:
-      1. Variables de entorno
+      1. Variables de entorno (.env)
       2. config.yml
-      3. Defaults internos (si los hubiera)
-
-    Devuelve un diccionario de configuración unificado.
     """
+
     load_dotenv()
 
     # 1️⃣ Resolver ruta del config.yml
@@ -45,13 +52,16 @@ def load_config(config_path: Path | None = None) -> Dict[str, Any]:
     if not isinstance(config, dict):
         raise ValueError("config.yml no contiene un diccionario válido")
 
-    # 3️⃣ Aplicar overrides de variables de entorno
+    # 3️⃣ Aplicar overrides simples de entorno
     _apply_env_overrides(config)
 
-    # 4️⃣ Normalizar paths
+    # 4️⃣ Aplicar percentiles desde ENV (si existen)
+    _apply_percentiles_override(config)
+
+    # 5️⃣ Normalizar paths
     _resolve_paths(config, base_dir=config_path.parent.parent)
 
-    # 5️⃣ Validaciones mínimas
+    # 6️⃣ Validaciones mínimas
     _validate_config(config)
 
     return config
@@ -63,12 +73,28 @@ def load_config(config_path: Path | None = None) -> Dict[str, Any]:
 
 def _apply_env_overrides(config: Dict[str, Any]) -> None:
     """
-    Sobrescribe valores del config con variables de entorno si existen.
+    Sobrescribe valores simples del config con variables de entorno.
     """
     for env_var, key_path in ENV_OVERRIDES.items():
         value = os.getenv(env_var)
         if value is not None:
             _set_nested_key(config, key_path, value)
+
+
+def _apply_percentiles_override(config: Dict[str, Any]) -> None:
+    """
+    Sobrescribe percentiles desde ENV:
+    PERCENTILES=Q05,Q10,Q20,...
+    """
+    raw = os.getenv("PERCENTILES")
+    if not raw:
+        return
+
+    percentiles = [p.strip() for p in raw.split(",") if p.strip()]
+    if not percentiles:
+        raise ValueError("PERCENTILES en .env está vacío o mal formado")
+
+    config["percentiles"] = percentiles
 
 
 def _resolve_paths(config: Dict[str, Any], base_dir: Path) -> None:
@@ -91,6 +117,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
         ("paths", "dataset_processed"),
         ("paths", "output_dir"),
         ("paths", "dataset_dicctionary"),
+        ("paths", "components_config"),
     ]
 
     for key_path in required_paths:
@@ -105,6 +132,10 @@ def _validate_config(config: Dict[str, Any]) -> None:
     for key_path in required_columns:
         if _get_nested_key(config, key_path) is None:
             raise ValueError(f"Falta columna obligatoria: {'.'.join(key_path)}")
+
+    percentiles = config.get("percentiles")
+    if not isinstance(percentiles, list) or not percentiles:
+        raise ValueError("percentiles debe ser una lista no vacía")
 
 
 def _set_nested_key(d: Dict[str, Any], keys: tuple, value: Any) -> None:

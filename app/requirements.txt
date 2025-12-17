@@ -3,5 +3,7 @@ python-dotenv
 pandas
 pyarrow
 fastparquet
+rich
+
 plotly
 kaleido
