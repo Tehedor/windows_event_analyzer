@@ -1,0 +1,56 @@
+### Listar consultas
+GET http://localhost:8050/queries
+
+
+### Ejecutar consulta
+POST http://localhost:8050/query
+Content-Type: application/json
+
+{
+  "src": "475,484,*",
+  "dst": "475,511"
+}
+
+### Ejecutar consulta2
+POST http://localhost:8050/query
+Content-Type: application/json
+
+{
+  "src": "475,484,*",
+  "dst": "?,?,475,511"
+}
+
+### Ejecutar consulta2
+POST http://localhost:8050/query
+Content-Type: application/json
+
+{
+  "src": "475,484,*",
+  "dst": "*,475,511"
+}
+
+### Ejecutar consulta2
+POST http://localhost:8050/query
+Content-Type: application/json
+
+{
+  "src": "475,484,*",
+  "dst": "*,511"
+}
+
+### Ejecutar consulta2
+POST http://localhost:8050/query
+Content-Type: application/json
+
+{
+  "src": "475,484,*",
+  "dst": "511"
+}
+### Ejecutar consulta2
+POST http://localhost:8050/query
+Content-Type: application/json
+
+{
+  "src": "475,484,*",
+  "dst": "511,"
+}

@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 
 import pandas as pd
 
-from helpers._3_input_controller import QueryPattern
+from core._3_input_controller import QueryPattern
 
 
 

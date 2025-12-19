@@ -1,12 +1,15 @@
-.
+app
 ├── __pycache__
-│   └── app.cpython-312.pyc
-├── a
+│   ├── app.cpython-312.pyc
+│   └── main.cpython-312.pyc
 ├── api
+│   ├── __pycache__
+│   │   ├── dependencies.cpython-312.pyc
+│   │   ├── routes.cpython-312.pyc
+│   │   └── schemas.cpython-312.pyc
 │   ├── dependencies.py
 │   ├── routes.py
 │   └── schemas.py
-├── app.py
 ├── config
 │   └── config.yml
 ├── core
@@ -15,6 +18,7 @@
 │   ├── _3_input_controller.py
 │   ├── _4_query_engine.py
 │   ├── _5_output_writer.py
+│   ├── '_5_output_writer copy.py'
 │   ├── _6_event_dictionary.py
 │   ├── __pycache__
 │   │   ├── _1_config_loader.cpython-312.pyc
@@ -68,11 +72,17 @@
 ├── output
 │   ├── logs
 │   ├── queries
-│   │   ├── src_475-484-475-star__dst_475-511-star.parquet
-│   │   ├── src_475-484-475-star__dst_475-511.parquet
-│   │   ├── src_475-484-475__dst_475-511-star.parquet
-│   │   ├── src_475-484-475__dst_475-511.parquet
-│   │   └── src_475-star__dst_475-511.parquet
+│   │   ├── src_475-484-star__dst_475-511.json
+│   │   ├── src_475-484-star__dst_475-511.parquet
+│   │   ├── src_475-484-star__dst_any-any-475-511.json
+│   │   ├── src_475-484-star__dst_any-any-475-511.parquet
+│   │   ├── src_475-484-star__dst_star-475-511.json
+│   │   └── src_475-484-star__dst_star-475-511.parquet
+│   ├── queries_csv
+│   │   ├── src_475-484-star__dst_475-511.csv
+│   │   ├── src_475-484-star__dst_any-475-511.csv
+│   │   ├── src_475-484-star__dst_any-any-475-511.csv
+│   │   └── src_475-484-star__dst_star-475-511.csv
 │   └── viewDebug.ipynb
 ├── queries.http
 ├── README.md
@@ -83,6 +93,8 @@
 ├── scripts
 │   └── run_query.py
 ├── services
+│   ├── __pycache__
+│   │   └── queries_service.cpython-312.pyc
 │   ├── dictionary_service.py
 │   └── queries_service.py
 └── state

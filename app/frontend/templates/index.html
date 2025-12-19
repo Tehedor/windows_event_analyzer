@@ -1,0 +1,125 @@
+<!-- app/frontend/templates/index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizador de Ventanas</title>
+
+    <!-- CSS principal -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <!-- ===================================================== -->
+    <!-- (1) TÍTULO -->
+    <!-- ===================================================== -->
+    <header id="app-header">
+        <h1>Visualizador de Ventanas</h1>
+    </header>
+
+    <!-- ===================================================== -->
+    <!-- CONTENEDOR PRINCIPAL (2 columnas) -->
+    <!-- ===================================================== -->
+    <main id="app-container">
+
+        <!-- ================================================= -->
+        <!-- COLUMNA IZQUIERDA -->
+        <!-- ================================================= -->
+        <section id="left-panel">
+
+            <!-- --------------------------------------------- -->
+            <!-- (2) ÁREA DE VISUALIZACIÓN -->
+            <!-- --------------------------------------------- -->
+            <div id="visualization-container">
+
+                <!-- Texto placeholder mientras no hay datos -->
+                <div id="visualization-placeholder">
+                    <p>Selecciona una consulta para visualizar las ventanas</p>
+                </div>
+
+                <!-- Aquí se renderizarán las ventanas -->
+                <div id="visualization-content">
+                    <!-- visualizer.js inyectará aquí los bloques -->
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ================================================= -->
+        <!-- COLUMNA DERECHA -->
+        <!-- ================================================= -->
+        <section id="right-panel">
+
+            <!-- --------------------------------------------- -->
+            <!-- (3) SELECTOR DE CONSULTA -->
+            <!-- --------------------------------------------- -->
+            <div id="query-form-container">
+
+                <h2>Nueva consulta</h2>
+
+                <form id="query-form">
+
+                    <div class="form-group">
+                        <label for="src-input">Patrón src (observación)</label>
+                        <input
+                            type="text"
+                            id="src-input"
+                            name="src"
+                            placeholder="Ej: 475,484,*"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dst-input">Patrón dst (predicción)</label>
+                        <input
+                            type="text"
+                            id="dst-input"
+                            name="dst"
+                            placeholder="Ej: 511"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <button type="submit" id="run-query-btn">
+                        Buscar
+                    </button>
+
+                </form>
+
+            </div>
+
+            <!-- --------------------------------------------- -->
+            <!-- (4) LISTA DE CONSULTAS -->
+            <!-- --------------------------------------------- -->
+            <div id="queries-list-container">
+
+                <h2>Histórico de consultas</h2>
+
+                <ul id="queries-list">
+                    <!--
+                      ui.js inyectará aquí elementos <li>
+                      Cada item representará una query
+                    -->
+                </ul>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ===================================================== -->
+    <!-- JS (se cargan al final) -->
+    <!-- ===================================================== -->
+    <!-- <script src="/static/js/api.js"></script>
+    <script src="/static/js/state.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/visualizer.js"></script>
+    <script src="/static/js/main.js"></script> -->
+    <script type="module" src="/static/js/main.js"></script>
+
+
+</body>
+</html>

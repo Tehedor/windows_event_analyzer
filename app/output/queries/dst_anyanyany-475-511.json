@@ -1,0 +1,13 @@
+{
+  "query_id": "84117e436ee0",
+  "src_raw": null,
+  "dst_raw": "?.?.?,475,511",
+  "src": null,
+  "dst": "?,?,?,475,511",
+  "status": "done",
+  "rows": 5722,
+  "output": "/app/output/queries/dst_anyanyany-475-511.parquet",
+  "error": null,
+  "created_at": "2025-12-19T02:30:51.196691",
+  "updated_at": "2025-12-19T02:31:12.162517"
+}

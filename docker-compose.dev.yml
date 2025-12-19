@@ -10,7 +10,8 @@ services:
       - ./app:/app
     environment:
       - DASH_DEBUG=true
-    command: python app.py
+    # command: python app.py
+    command: uvicorn main:app --host 0.0.0.0 --port 8050 --reload
     
     # LIMITACIÓN DE RECURSOS
     deploy:

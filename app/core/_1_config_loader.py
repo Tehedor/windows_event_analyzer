@@ -17,6 +17,7 @@ ENV_OVERRIDES = {
     "DATASET_RAW_PATH": ("paths", "dataset_raw"),
     "DATASET_PROCESSED_PATH": ("paths", "dataset_processed"),
     "OUTPUT_DIR": ("paths", "output_dir"),
+    "OUTPUT_DIR_CSV": ("paths", "output_dir_csv"),
     "DATASET_DICTIONARY_PATH": ("paths", "dataset_dicctionary"),
 
     "OBS_EVENTS_COLUMN": ("columns", "observation", "events"),
@@ -116,6 +117,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
         ("paths", "dataset_raw"),
         ("paths", "dataset_processed"),
         ("paths", "output_dir"),
+        ("paths", "output_dir_csv"),
         ("paths", "dataset_dicctionary"),
         ("paths", "components_config"),
     ]

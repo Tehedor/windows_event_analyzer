@@ -1,0 +1,315 @@
+/* ===================================================== */
+/* RESET BÁSICO */
+/* ===================================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f5f6f8;
+    color: #222;
+}
+
+/* ===================================================== */
+/* (1) HEADER */
+/* ===================================================== */
+
+#app-header {
+    height: 60px;
+    background-color: #1f2937;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid #111827;
+}
+
+#app-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+/* ===================================================== */
+/* CONTENEDOR PRINCIPAL */
+/* ===================================================== */
+
+#app-container {
+    height: calc(100% - 60px);
+    display: flex;
+}
+
+/* ===================================================== */
+/* COLUMNA IZQUIERDA */
+/* ===================================================== */
+
+#left-panel {
+    flex: 3;
+    padding: 15px;
+    overflow: hidden;
+}
+
+/* ===================================================== */
+/* ÁREA DE VISUALIZACIÓN */
+/* ===================================================== */
+
+#visualization-container {
+    height: 100%;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 15px;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Placeholder cuando no hay selección */
+
+#visualization-placeholder {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-style: italic;
+}
+
+#visualization-content {
+    display: none; /* Se activa cuando hay datos */
+}
+
+/* ===================================================== */
+/* COLUMNA DERECHA */
+/* ===================================================== */
+
+#right-panel {
+    flex: 1;
+    padding: 15px;
+    border-left: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow: hidden;
+}
+
+/* ===================================================== */
+/* (3) FORMULARIO DE CONSULTA */
+/* ===================================================== */
+
+#query-form-container {
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+#query-form-container h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 10px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #374151;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+#run-query-btn {
+    width: 100%;
+    padding: 8px;
+    background-color: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+#run-query-btn:hover {
+    background-color: #1d4ed8;
+}
+
+/* ===================================================== */
+/* (4) LISTA DE CONSULTAS */
+/* ===================================================== */
+
+#queries-list-container {
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#queries-list-container h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+#queries-list {
+    list-style: none;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Item individual de query */
+
+.query-item {
+    padding: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.query-item:last-child {
+    border-bottom: none;
+}
+
+.query-item:hover {
+    background-color: #f3f4f6;
+}
+
+/* Estado activo */
+
+.query-item.active {
+    background-color: #e0e7ff;
+    border-left: 4px solid #2563eb;
+}
+
+/* Estados */
+
+.query-status {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.query-status.running {
+    color: #ca8a04;
+}
+
+.query-status.done {
+    color: #15803d;
+}
+
+.query-status.error {
+    color: #b91c1c;
+}
+
+/* ===================================================== */
+/* SCROLLBAR SUAVE (opcional, solo visual) */
+/* ===================================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #c7c9cc;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+}
+
+
+/* ===================================================== */
+/* VISUALIZADOR DE VENTANAS */
+/* ===================================================== */
+
+.window {
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+
+.window-label {
+    width: 160px;
+    font-weight: bold;
+    color: #374151;
+}
+
+/* Contenedor de eventos */
+.window-events {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+/* Bloque individual */
+.event-block {
+    width: 28px;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    border-radius: 4px;
+
+    overflow: hidden;
+    white-space: nowrap;
+    user-select: none;
+
+    cursor: default;
+}
+
+.event-block.compact {
+    min-width:50px;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    border-radius: 4px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.event-block .event-id {
+    font-weight: 600;
+}
+
+.event-block .event-percentile {
+    font-size: 9px;      /* 🔹 más pequeño */
+    opacity: 0.9;
+}
+
+.window-separator {
+    width: 5px;                 /* más visible */
+    background-color: #111;
+    margin: 0 12px;             /* separación REAL */
+    border-radius: 4px;
+    align-self: stretch;        /* 🔥 CLAVE */
+}
+

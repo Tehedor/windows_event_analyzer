@@ -1,0 +1,13 @@
+{
+  "query_id": "44907002dd4f",
+  "src_raw": "475,484,*",
+  "dst_raw": "*,511",
+  "src": "475,484,*",
+  "dst": "*,511",
+  "status": "done",
+  "rows": 0,
+  "output": "/app/output/queries/src_475-484-star__dst_star-511.parquet",
+  "error": null,
+  "created_at": "2025-12-19T01:10:05.243650",
+  "updated_at": "2025-12-19T01:10:06.461585"
+}

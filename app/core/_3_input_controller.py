@@ -9,11 +9,11 @@ class QueryPattern:
     """
     Representa un patrón de búsqueda ya procesado.
     """
-    raw: str                 # Entrada original del usuario
-    regex: str               # Regex final usable
-    prefix: Optional[str]    # Prefijo si existe (optimización)
-    target: str              # 'observation' | 'prediction'
-
+    raw: str          # lo que escribió el usuario (solo informativo)
+    canonical: str    # representación canónica ÚNICA
+    regex: str
+    prefix: Optional[str]
+    target: str
 
 # -------------------------------------------------------------------------
 # API principal
@@ -34,11 +34,12 @@ def parse_pattern(
 
     separator = config["processing"]["separator"]
 
-    normalized = _normalize_input(raw_pattern, separator)
-    regex, prefix = _build_regex_and_prefix(normalized, separator)
+    canonical = _normalize_input(raw_pattern, separator)
+    regex, prefix = _build_regex_and_prefix(canonical, separator)
 
     return QueryPattern(
         raw=raw_pattern,
+        canonical=canonical,
         regex=regex,
         prefix=prefix,
         target=column_type
