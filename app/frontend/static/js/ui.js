@@ -47,5 +47,6 @@ export function showVisualizationPlaceholder() {
 
 export function showVisualizationContent() {
     document.getElementById("visualization-placeholder").style.display = "none";
-    document.getElementById("visualization-content").style.display = "block";
+    // Usar flex para permitir centrar el mensaje vacío verticalmente
+    document.getElementById("visualization-content").style.display = "flex";
 }

@@ -59,6 +59,7 @@ export async function loadMoreWindows(query, reset = false) {
         offset,
         limit
     );
+ 
 
     state.pagination.total = data.total;
 
@@ -76,6 +77,17 @@ export async function loadMoreWindows(query, reset = false) {
 async function renderWindows(rows, firstBatch) {
     const container = document.getElementById("visualization-content");
     const eventDict = await loadEventDictionary();
+
+    console.log("renderWindows", rows, firstBatch);
+
+    if (rows.length === 0 && firstBatch) {
+        const msg = document.createElement("div");
+        msg.className = "no-data-message";
+        msg.textContent = "No hay datos para mostrar.";
+        container.appendChild(msg);
+        console.log("pena: no hay datos para mostrar");
+        return;
+    }
 
     rows.forEach((row, i) => {
         const idx = state.pagination.offset + i;
