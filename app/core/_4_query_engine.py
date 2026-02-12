@@ -1,11 +1,22 @@
-# app/helpers/_4_query_engine.py
-import re
+# app/core/_4_query_engine.py
+
 from typing import Optional, Dict, Any
 
 import pandas as pd
+import numpy as np
 
 from core._3_input_controller import QueryPattern
-
+from core.dsl_ast import (
+    Expr,
+    Value,
+    AnyOne,
+    Star,
+    Sequence,
+    Has,
+    Or,
+    And,
+    Not
+)
 
 
 # -------------------------------------------------------------------------
@@ -18,33 +29,18 @@ def run_query(
     dst_pattern: Optional[QueryPattern],
     config: Dict[str, Any]
 ) -> pd.DataFrame:
-    """
-    Ejecuta la consulta sobre el DataFrame preprocesado usando
-    patrones de observación (src) y/o predicción (dst).
-    """
 
     if src_pattern is None and dst_pattern is None:
         return df
 
     result = df
-
     separator = config["processing"]["separator"]
 
     if src_pattern is not None:
-        result = _apply_pattern(
-            result,
-            pattern=src_pattern,
-            level=0,  # obs_seq
-            separator=separator
-        )
+        result = _apply_pattern(result, src_pattern, 0, separator)
 
     if dst_pattern is not None:
-        result = _apply_pattern(
-            result,
-            pattern=dst_pattern,
-            level=1,  # pred_seq
-            separator=separator
-        )
+        result = _apply_pattern(result, dst_pattern, 1, separator)
 
     return result
 
@@ -59,62 +55,91 @@ def _apply_pattern(
     level: int,
     separator: str
 ) -> pd.DataFrame:
-    """
-    Aplica un patrón a un nivel del MultiIndex.
 
-    level = 0 -> obs_seq
-    level = 1 -> pred_seq
-    """
+    full_index = df.index
+    level_values = full_index.get_level_values(level)
 
-    index_values = df.index.get_level_values(level)
+    bool_mask = evaluate_expr(pattern.ast, level_values, separator)
 
-    # 1️⃣ Prefijo ESTRUCTURAL (solo si el usuario ha puesto *)
-    prefix = _extract_prefix(pattern, separator)
-
-    if prefix is not None:
-        mask = index_values.str.startswith(prefix)
-        return df[mask]
-
-    # 2️⃣ Regex (match exacto o con ?)
-    regex = re.compile(pattern.regex)
-    mask = index_values.str.match(regex)
-    return df[mask]
+    # bool_mask es np.ndarray → lo alineamos al índice completo
+    return df[pd.Series(bool_mask, index=full_index)]
 
 
 # -------------------------------------------------------------------------
-# Prefijo semántico CORRECTO
+# Evaluación semántica del AST
 # -------------------------------------------------------------------------
 
-def _extract_prefix(
-    pattern: QueryPattern,
-    separator: str
-) -> Optional[str]:
+def evaluate_expr(expr: Expr, values: pd.Index, separator: str) -> np.ndarray:
     """
-    Extrae un prefijo SOLO cuando el usuario usa '*'
-    y SOLO como secuencia completa, no como substring.
-
-    Ejemplos:
-    - "475,*"       -> "475,"
-    - "1,2,*"       -> "1,2,"
-    - "1,?,2,*"     -> None (tiene wildcard estructural)
-    - "1,2"         -> None
+    values: pd.Index
+    returns: np.ndarray[bool]
     """
 
-    raw = pattern.raw.replace(" ", "").replace(".", separator)
+    # -------------------------
+    # ATÓMICOS
+    # -------------------------
+    if isinstance(expr, Value):
+        # Comparación exacta optimizada
+        return np.asarray(values == expr.canonical(), dtype=bool)
 
-    # Prefijo SOLO si termina en *
-    if not raw.endswith("*"):
-        return None
+    if isinstance(expr, Star):
+        return np.ones(len(values), dtype=bool)
 
-    # Quitar el *
-    base = raw[:-1]
+    if isinstance(expr, AnyOne):
+        return np.ones(len(values), dtype=bool)
 
-    # Si hay '?' en el prefijo, no es estructural → usar regex
-    if "?" in base:
-        return None
+    # -------------------------
+    # SECUENCIA
+    # -------------------------
+    if isinstance(expr, Sequence):
+        parts = expr.parts
 
-    # El prefijo debe acabar en separador
-    if not base.endswith(separator):
-        base += separator
+        # Caso exacto (solo Values)
+        if all(isinstance(p, Value) for p in parts):
+            full = separator.join(p.canonical() for p in parts)
+            return np.asarray(values == full, dtype=bool)
 
-    return base
+        # Regex estructural
+        regex_parts = []
+        for p in parts:
+            if isinstance(p, Value):
+                regex_parts.append(re_escape(p.canonical())) # Buena práctica escapar
+            elif isinstance(p, AnyOne):
+                regex_parts.append(r"\d+")
+            elif isinstance(p, Star):
+                # CORRECCIÓN: Usar .* para permitir que el join maneje los separadores
+                # y no exigir comas dobles.
+                regex_parts.append(r".*")
+
+        regex = "^" + separator.join(regex_parts) + "$"
+        
+        return np.asarray(values.str.match(regex, na=False), dtype=bool)
+
+    # -------------------------
+    # HAS {}
+    # -------------------------
+    if isinstance(expr, Has):
+        val = expr.expr.canonical()
+        # Regex para "contiene valor exacto": al principio, en medio o al final
+        pattern = rf"(?:^|{separator}){val}(?:{separator}|$)"
+        return np.asarray(values.str.contains(pattern, regex=True, na=False), dtype=bool)
+
+    # -------------------------
+    # LÓGICOS
+    # -------------------------
+    if isinstance(expr, Or):
+        masks = [evaluate_expr(e, values, separator) for e in expr.items]
+        return np.logical_or.reduce(masks)
+
+    if isinstance(expr, And):
+        masks = [evaluate_expr(e, values, separator) for e in expr.items]
+        return np.logical_and.reduce(masks)
+
+    if isinstance(expr, Not):
+        return ~evaluate_expr(expr.item, values, separator)
+
+    raise TypeError(f"Expr no soportada: {type(expr)}")
+
+def re_escape(s: str) -> str:
+    import re
+    return re.escape(s)

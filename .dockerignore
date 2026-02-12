@@ -1,0 +1,26 @@
+# ...existing code...
+
+# Ignorar todo por defecto
+**
+
+*.parquet
+
+# Incluir solo la app
+!app/
+!app/**
+
+# Excluir caches de Python
+app/**/__pycache__/
+app/**/*.pyc
+app/**/*.pyo
+app/**/*.pyd
+app/**/.venv
+app/**/.venv/
+app/**/.venv/**
+
+# Excluir datasets y outputs
+app/datasets/
+app/output/
+app/debug/*.json
+app/debug/*.txt
+app/.env

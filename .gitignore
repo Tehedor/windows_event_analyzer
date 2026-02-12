@@ -2,3 +2,15 @@
 __pycache__/
 *.parquet
 *.csv
+.waste
+waste
+app/test/output/
+
+app/output/queries/*.json
+
+app/debug/*.json
+app/debug/*.txt
+
+
+files_output/queries/*
+files_output/queries_csv/*

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -10,11 +11,12 @@ from core._2_preprocessor import load_or_preprocess_dataset
 from core._3_input_controller import QueryPattern, parse_pattern
 from core._4_query_engine import run_query
 from core._5_output_writer import save_results
+from core._7_component_dictionary import build_component_dictionary,build_component_dictionary_compact
 
 from state.registry import QueryRegistry, QueryStatus, QueryEntry
 from state.locks import QueryLockManager
 
-
+from debug.debug import save_debug_info
 
 # -------------------------------------------------------------------------
 # Helpers
@@ -50,14 +52,49 @@ class QueryService:
 
     def __init__(self):
         self.config = load_config()
+        # logging.getLogger("uvicorn").info(
+        #     "input_multi_requests_file = %s",
+        #     self.config["paths"]["input_multi_requests_file"],
+        # )
+
+        save_debug_info(self.config, filename="config_debug", head="Configuración cargada")
         # self.df = load_or_preprocess_dataset(self.config)
         self._df = None
+        self._event_dict = None  # ✅ Cache del event dictionary
+
+        try:
+            self._component_dict = build_component_dictionary(self.config)
+            self._component_dict_compact = build_component_dictionary_compact(self.config)
+            # ✅ Agregar components al config
+            self.config["components"] = self._component_dict_compact["components"]
+        except Exception as e:
+            print(f"⚠️ Error generando component dictionary: {e}")
+
+        save_debug_info(self._component_dict, filename="component_dictionary_debug.json", head="Component Dictionary")
+        save_debug_info(self._component_dict_compact, filename="component_dictionary_compact_debug.json", head="Component Dictionary")
+        save_debug_info(self.config, filename="config_debug.json", head="Configuration")
 
         self.registry = QueryRegistry()
         self.locks = QueryLockManager()
 
         # 🆕 reconstruir estado desde disco
         self._load_existing_queries()
+
+
+    def get_component_dictionary(self) -> Dict[str, Any]:
+        return self._component_dict
+
+    def get_component_dictionary_compact(self) -> Dict[str, Any]:
+        return self._component_dict_compact
+
+
+    def get_event_dictionary(self) -> Dict[str, Any]:
+        """Retorna el event dictionary, cacheándolo en la primera llamada."""
+        if self._event_dict is None:
+            print("📚 Cargando event dictionary...")
+            from core._6_event_dictionary import build_event_dictionary
+            self._event_dict = build_event_dictionary(self.config)
+        return self._event_dict
 
     def _load_existing_queries(self) -> None:
         queries_dir = Path(self.config["paths"]["output_dir"])
@@ -141,12 +178,14 @@ class QueryService:
                     src_pattern,
                     dst_pattern,
                     self.config,
+                    # self._component_dict_compact,
                 )
 
                 paths = save_results(
                     result_df,
                     src_pattern,
                     dst_pattern,
+                    # self._component_dict_compact,
                     self.config,
                 )
 

@@ -24,11 +24,11 @@ def save_results(
 
     output_dir = Path(config["paths"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
-    os.chmod(output_dir, 0o775)  # Asegura permisos de lectura/escritura/ejecución
+    os.chmod(output_dir, 0o777)  # Asegura permisos de lectura/escritura/ejecución
     
     output_dir_csv = Path(config["paths"]["output_dir_csv"])
     output_dir_csv.mkdir(parents=True, exist_ok=True)
-    os.chmod(output_dir_csv, 0o775)  # Asegura permisos de lectura/escritura/ejecución
+    os.chmod(output_dir_csv, 0o777)  # Asegura permisos de lectura/escritura/ejecución
 
     # Obtenemos el nombre base sin extensión
     base_filename = _build_filename(src_pattern, dst_pattern)
@@ -40,12 +40,14 @@ def save_results(
         if mode == "parquet":
             file_path = output_dir / f"{base_filename}.parquet"
             df.to_parquet(file_path)
+            os.chmod(file_path, 0o666)
             generated_paths.append(file_path)
             
         elif mode == "csv":
             file_path = output_dir_csv / f"{base_filename}.csv"
             # index=False suele ser preferible para no guardar el índice numérico en el CSV
             df.to_csv(file_path, index=False, encoding='utf-8') 
+            os.chmod(file_path, 0o666)
             generated_paths.append(file_path)
 
     return generated_paths

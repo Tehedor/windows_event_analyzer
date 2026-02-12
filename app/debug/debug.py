@@ -1,5 +1,6 @@
 # /debug/debug.oy
 from pathlib import Path
+import json
 import logging
 from typing import Optional, Any
 
@@ -24,11 +25,15 @@ def save_debug_info(content_source: Any, filename: Optional[str] = "info_debug",
         # Obtener contenido (si es callable, llamar)
         content = content_source() if callable(content_source) else content_source
 
-        # Si es un DataFrame u objeto con to_string(), usarlo; si no, str()
-        try:
-            content_str = content.to_string()
-        except Exception:
-            content_str = str(content)
+        # Si es dict/list, exportar como JSON bonito
+        if isinstance(content, (dict, list)):
+            content_str = json.dumps(content, indent=2, ensure_ascii=False)
+        else:
+            # Si es un DataFrame u objeto con to_string(), usarlo; si no, str()
+            try:
+                content_str = content.to_string()
+            except Exception:
+                content_str = str(content)
 
         # Añadir header/título si se proporciona
         if head:

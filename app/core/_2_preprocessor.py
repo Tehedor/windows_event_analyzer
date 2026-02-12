@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Dict, Any
 
+import os
 import pandas as pd
 
 
@@ -115,4 +116,6 @@ def _save_processed_dataset(df: pd.DataFrame, path: Path) -> None:
     Guarda el dataset procesado en disco.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(path.parent, 0o777)
     df.to_parquet(path)
+    os.chmod(path, 0o666)
