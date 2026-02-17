@@ -1,28 +1,46 @@
-# config_env.py — configuración centralizada con Pydantic Settings
+# config_env.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
-import json
 from typing import Optional
 
 class Settings(BaseSettings):
     # --- SERVER CONFIG ---
     SERVER_PORT: int = 8050
 
-    DATASET_RAW_PATH: str = "datasets/raw/03_windows_dataset_tobs60_tpred30_tlead10.parquet"
-    DATASET_PROCESSED_PATH: str = "datasets/processed/03_windows_dataset_tobs60_tpred30_tlead10_indexed.parquet"
-    OUTPUT_DIR: str = "output/queries"
-    OUTPUT_DIR_CSV: str = "output/queries_csv"
-    DATASET_DICTIONARY_PATH: str = "datasets/raw/02_EventDictionary_notebook.json"
+    # --- DYNAMIC EXECUTION CONFIG ---
+    # Versión específica a cargar (Variable de entorno clave)
+    WINDOW_VERSION: str = "v001"
+    # Ruta base donde están las ejecuciones (apunta a la carpeta 03)
+    DATASET_RAW_PATH: str = "executions/03_preparewindowsds"
+    
 
-    OBS_EVENTS_COLUMN: str = "observation_events"
-    PRED_EVENTS_COLUMN: str = "prediction_events"
-    PERCENTILES: Optional[list] = ["Q05", "Q10", "Q20", "Q50", "Q90", "Q95"]
+    # --- PROCESSED CONFIG ---
+    # Ruta base para guardar los procesados. 
+    # El nombre del archivo final se calculará automáticamente usando la versión (ej: ..._v001_indexed.parquet)
+    DATASET_PROCESSED_PATH: str = "datasets/processed"
+
+    # --- OUTPUTS ---
+    # OUTPUT_DIR: str = "output/queries"
+    # OUTPUT_DIR_CSV: str = "output/queries_csv"
+    OUTPUT_DIR: str = "output"
+
+    # --- COLUMN NAMES (Overrides) ---
+    # OBS_EVENTS_COLUMN: str = "observation_events"
+    # PRED_EVENTS_COLUMN: str = "prediction_events"
+    OBS_EVENTS_COLUMN: str = "OW_events"
+    PRED_EVENTS_COLUMN: str = "PW_events"
+
+    COMPONENTS_CTRL: str = "./components.yml"
+    # COMPONENTS_CTRL: str = "datasets/components.yml"
+
+    # Percentiles: Se intentarán cargar del metadata del padre, 
+    # pero se pueden forzar aquí si es necesario.
+    # PERCENTILES: Optional[list] = None 
 
     # Configuración de carga
     model_config = SettingsConfigDict(
         env_file=".env", 
         env_file_encoding="utf-8",
-        extra="ignore" # Ignora variables en el .env que no estén definidas aquí
+        extra="ignore"
     )
 
 # Instancia global

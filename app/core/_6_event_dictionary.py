@@ -1,12 +1,13 @@
-# app/helpers/_6_event_dictionary.py
-
 import json
 import re
+import logging
 from pathlib import Path
 from typing import Dict, Any
 
 import yaml
 
+# Configuramos un logger para ver qué eventos fallan sin romper la app
+logger = logging.getLogger("uvicorn")
 
 # -------------------------------------------------------------------------
 # API principal
@@ -14,57 +15,66 @@ import yaml
 
 def build_event_dictionary(config: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
     """
-    Construye un diccionario enriquecido de eventos:
-
-    {
-      event_id: {
-        event_name,
-        component,
-        percentile_origin,
-        percentile_target,
-        percentile_index,
-        intensity,
-        base_color,
-        final_color
-      }
-    }
+    Construye un diccionario enriquecido de eventos.
+    Ahora es ROBUSTO: si un evento falla al parsearse, se salta y se loguea el warning,
+    permitiendo que la aplicación arranque.
     """
 
     event_dict_path = Path(config["paths"]["dataset_dicctionary"])
     components_path = Path(config["paths"]["components_config"])
-    percentiles = config["percentiles"]
+    
+    # Percentiles cargados dinámicamente
+    percentiles = config.get("percentiles", [])
+    if not percentiles:
+        logger.warning("⚠️ No se han encontrado percentiles en la configuración. Los colores pueden fallar.")
 
     event_id_to_name = _load_event_dictionary(event_dict_path)
     components_cfg = _load_components(components_path)
 
     n_percentiles = len(percentiles)
-
     enriched: Dict[int, Dict[str, Any]] = {}
 
     for event_id, event_name in event_id_to_name.items():
-        component, p_origin, p_target = _parse_event_name(event_name)
+        try:
+            # Intentamos parsear el nombre
+            component, p_origin, p_target = _parse_event_name(event_name)
 
-        if p_target not in percentiles:
-            # Evento fuera del esquema configurado
+            # Validamos si los percentiles/labels existen en la configuración actual
+            if p_target not in percentiles:
+                # Es común que sobren eventos si filtramos el dataset, solo debug.
+                # logger.debug(f"Evento {event_name} ignorado (Target {p_target} no en percentiles)")
+                continue
+
+            percentile_index = percentiles.index(p_target)
+            
+            # Evitamos división por cero si solo hay 1 percentil
+            if n_percentiles > 0:
+                intensity = (percentile_index + 1) / n_percentiles
+            else:
+                intensity = 1.0
+
+            base_color = components_cfg.get(component, {}).get("color", "#999999")
+            final_color = _adjust_color_intensity(base_color, intensity)
+
+            enriched[event_id] = {
+                "event_id": event_id,
+                "event_name": event_name,
+                "component": component,
+                "percentile_origin": p_origin,
+                "percentile_target": p_target,
+                "percentile_index": percentile_index,
+                "intensity": intensity,
+                "base_color": base_color,
+                "final_color": final_color,
+            }
+
+        except ValueError as e:
+            # 🛡️ CAPTURA DE ERROR: Si un evento está malformado, lo ignoramos y seguimos
+            logger.warning(f"⚠️ Error parseando evento '{event_name}': {e}. Se omitirá.")
             continue
-
-        percentile_index = percentiles.index(p_target)
-        intensity = (percentile_index + 1) / n_percentiles
-
-        base_color = components_cfg.get(component, {}).get("color", "#999999")
-        final_color = _adjust_color_intensity(base_color, intensity)
-
-        enriched[event_id] = {
-            "event_id": event_id,
-            "event_name": event_name,
-            "component": component,
-            "percentile_origin": p_origin,
-            "percentile_target": p_target,
-            "percentile_index": percentile_index,
-            "intensity": intensity,
-            "base_color": base_color,
-            "final_color": final_color,
-        }
+        except Exception as e:
+            logger.error(f"❌ Error inesperado procesando evento '{event_name}': {e}")
+            continue
 
     return enriched
 
@@ -74,12 +84,10 @@ def build_event_dictionary(config: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
 # -------------------------------------------------------------------------
 
 def _load_event_dictionary(path: Path) -> Dict[int, str]:
-    """
-    Carga JSON event_name -> event_id
-    y devuelve event_id -> event_name
-    """
     if not path.exists():
-        raise FileNotFoundError(f"Event dictionary no encontrado: {path}")
+        # Retornamos dict vacío en vez de romper, para robustez
+        logger.error(f"Event dictionary no encontrado en: {path}")
+        return {}
 
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
@@ -88,11 +96,9 @@ def _load_event_dictionary(path: Path) -> Dict[int, str]:
 
 
 def _load_components(path: Path) -> Dict[str, Any]:
-    """
-    Carga components.yml
-    """
     if not path.exists():
-        raise FileNotFoundError(f"Components config no encontrado: {path}")
+        logger.warning(f"Components config no encontrado en: {path}. Se usarán colores por defecto.")
+        return {}
 
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
@@ -101,33 +107,46 @@ def _load_components(path: Path) -> Dict[str, Any]:
 
 
 # -------------------------------------------------------------------------
-# Parsing de eventos
+# Parsing de eventos (Lógica Mejorada)
 # -------------------------------------------------------------------------
 
-_EVENT_REGEX = re.compile(
-    r"^(?P<component>.+?)_Q(?P<q1>\d+)(?:_to_Q(?P<q2>\d+))?$"
-)
+# Regex 1: Formato Antiguo (Component_Q05_to_Q10)
+_REGEX_STANDARD = re.compile(r"^(?P<component>.+?)_Q(?P<q1>\d+)(?:_to_Q(?P<q2>\d+))?$")
+
+# Regex 2: Formato Nuevo/Range (Battery_..._0_10-to-10_25)
+# Busca: Cualquier cosa (greedy) + _ + algo + -to- + algo
+_REGEX_RANGE = re.compile(r"^(?P<component>.+)_(?P<q1>[a-zA-Z0-9_]+)-to-(?P<q2>[a-zA-Z0-9_]+)$")
 
 
 def _parse_event_name(event_name: str) -> tuple[str, str, str]:
     """
-    Devuelve:
-      component, percentile_origin, percentile_target
+    Intenta parsear el nombre del evento con múltiples estrategias.
+    Devuelve: component, origin_label, target_label
     """
-    match = _EVENT_REGEX.match(event_name)
-    if not match:
-        raise ValueError(f"Formato de evento no reconocido: {event_name}")
+    
+    # 1. Intentar formato estándar (Qxx)
+    match = _REGEX_STANDARD.match(event_name)
+    if match:
+        component = match.group("component")
+        q1 = f"Q{match.group('q1')}"
+        q2 = match.group("q2")
+        if q2:
+            return component, q1, f"Q{q2}"
+        return component, q1, q1
 
-    component = match.group("component")
-    q1 = f"Q{match.group('q1')}"
-    q2 = match.group("q2")
+    # 2. Intentar formato nuevo de rangos (-to-)
+    match_range = _REGEX_RANGE.match(event_name)
+    if match_range:
+        return match_range.group("component"), match_range.group("q1"), match_range.group("q2")
 
-    if q2:
-        q2 = f"Q{q2}"
-        return component, q1, q2
+    # 3. Fallback simple (si termina en _algo)
+    # Ejemplo: Component_Label
+    if "_" in event_name:
+        parts = event_name.rsplit("_", 1)
+        if len(parts) == 2:
+            return parts[0], parts[1], parts[1]
 
-    # Evento simple
-    return component, q1, q1
+    raise ValueError("Formato no reconocido por ninguna estrategia")
 
 
 # -------------------------------------------------------------------------
@@ -135,15 +154,17 @@ def _parse_event_name(event_name: str) -> tuple[str, str, str]:
 # -------------------------------------------------------------------------
 
 def _adjust_color_intensity(hex_color: str, intensity: float) -> str:
-    """
-    Ajusta la intensidad del color (0..1).
-    Devuelve rgb(r,g,b)
-    """
-    hex_color = hex_color.lstrip("#")
-    r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    try:
+        hex_color = hex_color.lstrip("#")
+        if len(hex_color) != 6:
+            return "rgb(128,128,128)" # Fallback gris
+            
+        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
-    r = int(r * intensity)
-    g = int(g * intensity)
-    b = int(b * intensity)
+        r = int(r * intensity)
+        g = int(g * intensity)
+        b = int(b * intensity)
 
-    return f"rgb({r},{g},{b})"
+        return f"rgb({r},{g},{b})"
+    except Exception:
+        return "rgb(128,128,128)"

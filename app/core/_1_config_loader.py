@@ -1,5 +1,6 @@
 # core/_1_config_loader.py
 import os
+import json
 import importlib.util
 from pathlib import Path
 from typing import Dict, Any, List, Union
@@ -7,160 +8,200 @@ from typing import Dict, Any, List, Union
 from dotenv import load_dotenv
 import yaml
 
-
-# -------------------------------------------------------------------------
-# Variables de entorno soportadas (ENV -> ruta en config)
-# -------------------------------------------------------------------------
-
-ENV_OVERRIDES = {
-    "DATASET_RAW_PATH": ("paths", "dataset_raw"),
-    "DATASET_PROCESSED_PATH": ("paths", "dataset_processed"),
-    "OUTPUT_DIR": ("paths", "output_dir"),
-    "OUTPUT_DIR_CSV": ("paths", "output_dir_csv"),
-    "DATASET_DICTIONARY_PATH": ("paths", "dataset_dicctionary"),
-
-    "OBS_EVENTS_COLUMN": ("columns", "observation", "events"),
-    "PRED_EVENTS_COLUMN": ("columns", "prediction", "events"),
-    "PERCENTILES": ("percentiles"),
-
-}
-
 # -------------------------------------------------------------------------
 # API principal
 # -------------------------------------------------------------------------
 
 def load_config(config_path: Union[Path, None] = None) -> Dict[str, Any]:
-    """
-    Carga la configuración del proyecto siguiendo esta prioridad:
-      1. Variables de entorno (si tienen valor real).
-      2. config.yml (valor por defecto).
-    """
-
     load_dotenv()
 
-    # 1️⃣ Resolver ruta del config.yml
+    # 1️⃣ Resolver ruta del config.yml base
     if config_path is None:
-        # Asumiendo que este script está en app/core/, subimos a app/
         project_root = Path(__file__).resolve().parents[1]
         config_path = project_root / "config" / "config.yml"
 
     if not config_path.exists():
-        # Fallback de seguridad por si la estructura cambia en Docker
         potential_path = Path("app/config/config.yml")
         if potential_path.exists():
             config_path = potential_path.resolve()
         else:
             raise FileNotFoundError(f"No se encontró config.yml en {config_path}")
 
-    # 2️⃣ Cargar YAML
+    # 2️⃣ Cargar YAML Base
     with config_path.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    if not isinstance(config, dict):
-        raise ValueError("config.yml no contiene un diccionario válido")
-
-    # 3️⃣ Mezclar config_env.py con prioridad
+    # 3️⃣ Mezclar config_env.py (Pydantic)
     project_root = Path(__file__).resolve().parents[1]
-    config_env = _load_config_env(project_root)
+    config_env, env_vars_raw = _load_config_env(project_root)
+    
     if config_env:
         config = _merge_dicts(config, config_env)
 
-    # 4️⃣ Aplicar overrides simples de entorno (SOLO SI NO ESTÁN VACÍOS)
-    _apply_env_overrides(config)
+    # 4️⃣ RESOLUCIÓN DINÁMICA DE RUTAS
+    _resolve_dynamic_execution_paths(config, project_root, env_vars_raw)
 
-    # 5️⃣ Aplicar percentiles desde ENV (si existen y no están vacíos)
-    _apply_percentiles_override(config)
-
-    # 6️⃣ Normalizar paths
-    # Usamos el directorio padre de 'app' como base para resolver paths relativos
+    # 5️⃣ Resolver paths relativos
     project_base = config_path.parent.parent
     _resolve_paths(config, base_dir=project_base)
 
-    # 7️⃣ Validaciones mínimas
+    # 6️⃣ Validaciones
     _validate_config(config)
 
     return config
 
 
 # -------------------------------------------------------------------------
-# Helpers internos
+# Lógica de Resolución Dinámica
 # -------------------------------------------------------------------------
 
-def _apply_env_overrides(config: Dict[str, Any]) -> None:
-    """
-    Sobrescribe valores del config con variables de entorno.
-    CRÍTICO: Ignora valores None o cadenas vacías "" (común en Docker).
-    """
-    for env_var, key_path in ENV_OVERRIDES.items():
-        value = os.getenv(env_var)
+def _resolve_dynamic_execution_paths(config: Dict[str, Any], project_root: Path, env_vars: Dict[str, Any]):
+    paths = config.get("paths", {})
+    version = env_vars.get("WINDOW_VERSION", "v001")
+    
+    # ---------------------------------------------------------
+    # 1. OUTPUTS DINÁMICOS (NUEVO)
+    # ---------------------------------------------------------
+    # Leemos la base (ej: "output")
+    output_base_str = paths.get("output_base", "output")
+    output_base_path = Path(output_base_str)
+    
+    if not output_base_path.is_absolute():
+        output_base_path = project_root / output_base_path
+
+    # Construimos la estructura: output/v001/queries y output/v001/queries_csv
+    versioned_path = output_base_path / version
+    
+    final_output_dir = versioned_path / "queries"
+    final_output_dir_csv = versioned_path / "queries_csv"
+
+    # Inyectamos las rutas finales en el config para que el resto de la app las use
+    config["paths"]["output_dir"] = str(final_output_dir)
+    config["paths"]["output_dir_csv"] = str(final_output_dir_csv)
+
+    # ---------------------------------------------------------
+    # 2. DATASETS (INPUTS)
+    # ---------------------------------------------------------
+    raw_path_input = paths.get("dataset_raw")
+    if not raw_path_input or not raw_path_input.strip():
+        raw_path_input = "executions/03_preparewindowsds"
         
-        # FIX: Verificamos que no sea None y que no sea una cadena vacía o espacios
-        if value and value.strip():
-            _set_nested_key(config, key_path, value)
+    base_raw_path = Path(raw_path_input)
+    
+    if not base_raw_path.is_absolute():
+        base_raw_path = project_root / base_raw_path
+
+    current_variant_path = base_raw_path / version
+    
+    # A. Dataset RAW
+    parquet_name = "03_preparewindowsds_dataset.parquet"
+    raw_parquet_path = current_variant_path / parquet_name
+    
+    if not raw_parquet_path.exists():
+        raise FileNotFoundError(
+            f"No se encuentra el dataset.\n"
+            f"Ruta buscada: {raw_parquet_path}\n"
+            f"Verifica la versión '{version}' y el montaje de volúmenes."
+        )
+    
+    config["paths"]["dataset_raw"] = str(raw_parquet_path)
+
+    # B. Params (Parent)
+    params_path = current_variant_path / "params.yaml"
+    if not params_path.exists():
+        raise FileNotFoundError(f"No se encuentra params.yaml en: {params_path}")
+    
+    with open(params_path, "r", encoding="utf-8") as f:
+        params_data = yaml.safe_load(f)
+    
+    parent_variant = params_data.get("parent_variant")
+    if not parent_variant:
+        raise ValueError(f"params.yaml en {version} no contiene 'parent_variant'")
+
+    # C. Diccionario y Metadata
+    executions_root = base_raw_path.parent 
+    path_02 = executions_root / "02_prepareeventsds" / parent_variant
+    
+    dict_name = "02_prepareeventsds_event_catalog.json"
+    dict_path = path_02 / dict_name
+    config["paths"]["dataset_dicctionary"] = str(dict_path)
+
+    metadata_path = path_02 / "02_prepareeventsds_metadata.json"
+    found_percentiles = None
+    if metadata_path.exists():
+        with open(metadata_path, "r") as f:
+            meta = json.load(f)
+            if "percentiles" in meta:
+                found_percentiles = meta["percentiles"]
+    
+    if found_percentiles and not config.get("percentiles"):
+        config["percentiles"] = found_percentiles
+
+    # D. Output Procesado (Cache del dataset indexado)
+    processed_base = Path(paths.get("dataset_processed", "datasets/processed"))
+    if str(processed_base) == "." or str(processed_base) == "":
+        processed_base = project_root / "datasets/processed"
+
+    if not processed_base.suffix: 
+        processed_filename = f"03_windows_{version}_indexed.parquet"
+        config["paths"]["dataset_processed"] = str(processed_base / processed_filename)
+    
+    print(f"✅ Configuración Dinámica Cargada: Versión {version} (Parent: {parent_variant})")
+    print(f"📂 Outputs configurados en: {versioned_path}")
 
 
-def _load_config_env(project_root: Path) -> Dict[str, Any]:
-    """
-    Carga config_env.py si existe y lo convierte al formato del config.yml.
-    Prioridad: CONFIG/config dict > settings_env (Pydantic) > Settings()
-    """
+# -------------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------------
+
+def _load_config_env(project_root: Path):
     env_path = project_root / "config_env.py"
     if not env_path.exists():
-        return {}
+        return {}, {}
 
     spec = importlib.util.spec_from_file_location("config_env", env_path)
-    if spec is None or spec.loader is None:
-        return {}
-
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    for name in ("CONFIG", "config"):
-        value = getattr(module, name, None)
-        if isinstance(value, dict):
-            return value
-
     settings_env = getattr(module, "settings_env", None)
-    if settings_env is not None:
-        settings_dict = _settings_to_dict(settings_env)
-        return _config_env_to_dict(settings_dict)
-
-    settings_cls = getattr(module, "Settings", None)
-    if settings_cls is not None:
-        try:
-            settings_dict = _settings_to_dict(settings_cls())
-            return _config_env_to_dict(settings_dict)
-        except Exception:
-            return {}
-
-    return {}
-
+    
+    if settings_env:
+        raw_dict = _settings_to_dict(settings_env)
+        return _config_env_to_dict(raw_dict), raw_dict
+        
+    return {}, {}
 
 def _settings_to_dict(settings_obj: Any) -> Dict[str, Any]:
-    """Convierte instancia de Pydantic Settings a dict compatible."""
     if hasattr(settings_obj, "model_dump"):
         return settings_obj.model_dump()
-    if hasattr(settings_obj, "dict"):
-        return settings_obj.dict()
-    return dict(settings_obj)
-
+    return settings_obj.dict()
 
 def _config_env_to_dict(settings_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """Mapea Settings a la estructura del config.yml."""
+    """
+    Mapea Settings a la estructura del config.yml.
+    """
+    
+    def get_val(key, default=None):
+        val = settings_dict.get(key)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            return default
+        return val
+
     paths = {
-        "dataset_raw": settings_dict.get("DATASET_RAW_PATH"),
-        "dataset_processed": settings_dict.get("DATASET_PROCESSED_PATH"),
-        "output_dir": settings_dict.get("OUTPUT_DIR"),
-        "output_dir_csv": settings_dict.get("OUTPUT_DIR_CSV"),
-        "dataset_dicctionary": settings_dict.get("DATASET_DICTIONARY_PATH"),
+        "dataset_raw": get_val("DATASET_RAW_PATH"),
+        "dataset_processed": get_val("DATASET_PROCESSED_PATH"),
+        "components_config": get_val("COMPONENTS_CTRL"),
+        
+        # Mapeamos la nueva variable base
+        "output_base": get_val("OUTPUT_BASE_PATH", "output"),
     }
 
     columns = {
         "observation": {
-            "events": settings_dict.get("OBS_EVENTS_COLUMN"),
+            "events": get_val("OBS_EVENTS_COLUMN", "observation_events"),
         },
         "prediction": {
-            "events": settings_dict.get("PRED_EVENTS_COLUMN"),
+            "events": get_val("PRED_EVENTS_COLUMN", "prediction_events"),
         },
     }
 
@@ -168,16 +209,18 @@ def _config_env_to_dict(settings_dict: Dict[str, Any]) -> Dict[str, Any]:
         "paths": {k: v for k, v in paths.items() if v is not None},
         "columns": columns,
     }
-
-    percentiles = settings_dict.get("PERCENTILES")
-    if percentiles is not None:
-        config_env["percentiles"] = percentiles
-
+    
     return config_env
 
+def _resolve_paths(config: Dict[str, Any], base_dir: Path) -> None:
+    paths = config.get("paths", {})
+    for key, value in paths.items():
+        if not value: continue
+        p = Path(value)
+        if not p.is_absolute():
+            paths[key] = str((base_dir / p).resolve())
 
 def _merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Mezcla recursiva: override tiene prioridad sobre base."""
     for k, v in override.items():
         if isinstance(v, dict) and isinstance(base.get(k), dict):
             base[k] = _merge_dicts(base[k], v)
@@ -185,98 +228,22 @@ def _merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, An
             base[k] = v
     return base
 
-
-def _apply_percentiles_override(config: Dict[str, Any]) -> None:
-    """
-    Sobrescribe percentiles desde ENV:
-    PERCENTILES=Q05,Q10,Q20,...
-    """
-    raw = os.getenv("PERCENTILES")
-    
-    # FIX: Ignorar si es None o vacío
-    if not raw or not raw.strip():
-        return
-
-    percentiles = [p.strip() for p in raw.split(",") if p.strip()]
-    
-    if percentiles:
-        config["percentiles"] = percentiles
-    else:
-        # Si la variable existe pero tras limpiar está vacía (ej: ",,"), advertimos o ignoramos
-        pass 
-
-
-def _resolve_paths(config: Dict[str, Any], base_dir: Path) -> None:
-    """
-    Convierte paths relativos a absolutos.
-    """
-    paths = config.get("paths", {})
-    for key, value in paths.items():
-        if not value: continue  # Skip si el path en config es nulo/vacío
-
-        p = Path(value)
-        if not p.is_absolute():
-            paths[key] = str((base_dir / p).resolve())
-
-
 def _validate_config(config: Dict[str, Any]) -> None:
-    """
-    Validación mínima para MVP.
-    """
     required_paths = [
         ("paths", "dataset_raw"),
         ("paths", "dataset_processed"),
+        ("paths", "dataset_dicctionary"),
+        # Validamos que existan tras la resolución dinámica
         ("paths", "output_dir"),
         ("paths", "output_dir_csv"),
-        ("paths", "dataset_dicctionary"),
-        ("paths", "components_config"),
     ]
-
     for key_path in required_paths:
         val = _get_nested_key(config, key_path)
         if not val:
-             # Falla si la configuración final (tras merge) está vacía
             raise ValueError(f"Falta configuración obligatoria: {'.'.join(key_path)}")
 
-    required_columns = [
-        ("columns", "observation", "events"),
-        ("columns", "prediction", "events"),
-    ]
-
-    for key_path in required_columns:
-        if _get_nested_key(config, key_path) is None:
-            raise ValueError(f"Falta columna obligatoria: {'.'.join(key_path)}")
-
-    percentiles = config.get("percentiles")
-    if not isinstance(percentiles, list) or not percentiles:
-        raise ValueError("percentiles debe ser una lista no vacía")
-
-
-def _set_nested_key(d: Dict[str, Any], keys: tuple, value: Any) -> None:
-    """
-    Asigna un valor en un diccionario anidado.
-    """
-    for key in keys[:-1]:
-        d = d.setdefault(key, {})
-    d[keys[-1]] = value
-
-
 def _get_nested_key(d: Dict[str, Any], keys: tuple) -> Any:
-    """
-    Obtiene un valor de un diccionario anidado.
-    """
     for key in keys:
-        if not isinstance(d, dict):
-            return None
+        if not isinstance(d, dict): return None
         d = d.get(key)
     return d
-
-
-# Bloque para testear rápidamente
-if __name__ == "__main__":
-    try:
-        cfg = load_config()
-        print("✅ Configuración cargada correctamente.")
-        print(f"📂 Output Dir: {cfg['paths']['output_dir']}")
-    except Exception as e:
-        print(f"❌ Error: {e}")

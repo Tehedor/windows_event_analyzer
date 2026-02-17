@@ -21,6 +21,7 @@ app/**/.venv/**
 # Excluir datasets y outputs
 app/datasets/
 app/output/
+app/output*
 app/debug/*.json
 app/debug/*.txt
 app/.env

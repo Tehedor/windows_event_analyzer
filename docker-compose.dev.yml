@@ -9,19 +9,20 @@ services:
     volumes:
       - ./app:/app
       # - ./files_output/:/output
-      - ./files_output/queries:/app/output/queries
-      - ./files_output/queries_csv:/app/output/queries_csv
+      - ./executions:/app/executions
+      # - ./epoch_processed:/app/epoch_processed
+      - ./files_output/queries:/app/output/
       - ./files_output/multi_requests_file.yml:/app/scripts/multi_requests_file.yml
     environment:
       - DASH_DEBUG=true
-      - DATASET_RAW_PATH=${DATASET_RAW_PATH:-}
-      - DATASET_PROCESSED_PATH=${DATASET_PROCESSED_PATH:-}
-      - OUTPUT_DIR=${OUTPUT_DIR:-}
-      - OUTPUT_DIR_CSV=${OUTPUT_DIR_CSV:-}
-      - DATASET_DICTIONARY_PATH=${DATASET_DICTIONARY_PATH:-}
-      - OBS_EVENTS_COLUMN=${OBS_EVENTS_COLUMN:-}
-      - PRED_EVENTS_COLUMN=${PRED_EVENTS_COLUMN:-}
-      - PERCENTILES=${PERCENTILES:-}
+      # - DATASET_RAW_PATH=${DATASET_RAW_PATH:-}
+      # - DATASET_PROCESSED_PATH=${DATASET_PROCESSED_PATH:-}
+      # - OUTPUT_DIR=${OUTPUT_DIR:-}
+      # - OUTPUT_DIR_CSV=${OUTPUT_DIR_CSV:-}
+      # - DATASET_DICTIONARY_PATH=${DATASET_DICTIONARY_PATH:-}
+      # - OBS_EVENTS_COLUMN=${OBS_EVENTS_COLUMN:-}
+      # - PRED_EVENTS_COLUMN=${PRED_EVENTS_COLUMN:-}
+      # - PERCENTILES=${PERCENTILES:-}
     # command: python app.py
     command: uvicorn main:app --host 0.0.0.0 --port 8050 --reload
     

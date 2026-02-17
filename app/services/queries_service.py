@@ -11,9 +11,10 @@ from core._2_preprocessor import load_or_preprocess_dataset
 from core._3_input_controller import QueryPattern, parse_pattern
 from core._4_query_engine import run_query
 from core._5_output_writer import save_results
-from core._7_component_dictionary import build_component_dictionary,build_component_dictionary_compact
+from core._7_component_dictionary import build_component_dictionary, build_component_dictionary_compact
 
-from state.registry import QueryRegistry, QueryStatus, QueryEntry
+# Importamos la instancia GLOBAL 'query_registry'
+from state.registry import query_registry, QueryStatus, QueryEntry
 from state.locks import QueryLockManager
 
 from debug.debug import save_debug_info
@@ -22,8 +23,8 @@ from debug.debug import save_debug_info
 # Helpers
 # -------------------------------------------------------------------------
 
-def _make_query_id(src: Optional[QueryPattern],
-                   dst: Optional[QueryPattern]) -> str:
+def _make_query_id(src: Optional[QueryPattern], dst: Optional[QueryPattern]) -> str:
+    # Genera un ID único basado en el contenido canónico
     raw = f"src={src.canonical if src else ''}|dst={dst.canonical if dst else ''}"
     return hashlib.sha1(raw.encode()).hexdigest()[:12]
 
@@ -31,8 +32,9 @@ def _write_query_metadata(entry) -> None:
     if not entry.output:
         return
 
-    # output puede ser string o lista
+    # output puede ser string o lista, normalizamos
     if isinstance(entry.output, list):
+        if not entry.output: return
         parquet_path = Path(entry.output[0])
     else:
         parquet_path = Path(entry.output)
@@ -52,34 +54,27 @@ class QueryService:
 
     def __init__(self):
         self.config = load_config()
-        # logging.getLogger("uvicorn").info(
-        #     "input_multi_requests_file = %s",
-        #     self.config["paths"]["input_multi_requests_file"],
-        # )
-
         save_debug_info(self.config, filename="config_debug", head="Configuración cargada")
-        # self.df = load_or_preprocess_dataset(self.config)
+        
         self._df = None
-        self._event_dict = None  # ✅ Cache del event dictionary
+        self._event_dict = None  
 
         try:
             self._component_dict = build_component_dictionary(self.config)
             self._component_dict_compact = build_component_dictionary_compact(self.config)
-            # ✅ Agregar components al config
             self.config["components"] = self._component_dict_compact["components"]
         except Exception as e:
             print(f"⚠️ Error generando component dictionary: {e}")
 
+        # Guardamos debug info
         save_debug_info(self._component_dict, filename="component_dictionary_debug.json", head="Component Dictionary")
-        save_debug_info(self._component_dict_compact, filename="component_dictionary_compact_debug.json", head="Component Dictionary")
-        save_debug_info(self.config, filename="config_debug.json", head="Configuration")
-
-        self.registry = QueryRegistry()
+        
+        # Usamos la instancia GLOBAL del registry para mantener estado
+        self.registry = query_registry
         self.locks = QueryLockManager()
 
-        # 🆕 reconstruir estado desde disco
+        # Cargamos estado previo
         self._load_existing_queries()
-
 
     def get_component_dictionary(self) -> Dict[str, Any]:
         return self._component_dict
@@ -87,9 +82,7 @@ class QueryService:
     def get_component_dictionary_compact(self) -> Dict[str, Any]:
         return self._component_dict_compact
 
-
     def get_event_dictionary(self) -> Dict[str, Any]:
-        """Retorna el event dictionary, cacheándolo en la primera llamada."""
         if self._event_dict is None:
             print("📚 Cargando event dictionary...")
             from core._6_event_dictionary import build_event_dictionary
@@ -115,6 +108,7 @@ class QueryService:
             except Exception as e:
                 print(f"[WARN] No se pudo cargar {meta_file.name}: {e}")
 
+        # Cargamos en el registro global
         self.registry.load_from_disk(entries)
 
     def _get_dataset(self):
@@ -123,27 +117,12 @@ class QueryService:
             self._df = load_or_preprocess_dataset(self.config)
         return self._df
 
-
     def list_queries(self) -> list[dict]:
-        queries_dir = Path(self.config["paths"]["output_dir"])
-        results = []
-
-        if not queries_dir.exists():
-            return results
-
-        for meta_file in sorted(queries_dir.glob("*.json")):
-            try:
-                with meta_file.open("r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    results.append(data)
-            except Exception as e:
-                print(f"[WARN] No se pudo leer {meta_file.name}: {e}")
-
-        return results
-
+        # Retorna el estado actual en memoria
+        return [entry.to_dict() for entry in self.registry.all().values()]
 
     def run(self, src: Optional[str], dst: Optional[str]) -> Dict[str, Any]:
-
+        
         src_pattern = parse_pattern(src, "observation", self.config) if src else None
         dst_pattern = parse_pattern(dst, "prediction", self.config) if dst else None
 
@@ -151,6 +130,7 @@ class QueryService:
         lock = self.locks.acquire(query_id)
 
         with lock:
+            # 1. Chequear caché en memoria
             entry = self.registry.get(query_id)
             if entry and entry.status == QueryStatus.DONE:
                 return {
@@ -160,6 +140,7 @@ class QueryService:
                     "cached": True,
                 }
 
+            # 2. Crear nueva entrada
             entry = self.registry.create(
                 query_id=query_id,
                 src_raw=src,
@@ -178,28 +159,31 @@ class QueryService:
                     src_pattern,
                     dst_pattern,
                     self.config,
-                    # self._component_dict_compact,
                 )
 
+                # save_results devuelve una lista de Paths
                 paths = save_results(
                     result_df,
                     src_pattern,
                     dst_pattern,
-                    # self._component_dict_compact,
                     self.config,
                 )
 
-                parquet_path = paths[0]   # el parquet es el output principal
+                # Tomamos el primer archivo (parquet) como referencia principal
+                parquet_path = paths[0] if paths else None
 
                 self.registry.update(
                     query_id,
                     status=QueryStatus.DONE,
                     rows=len(result_df),
-                    output=str(parquet_path),
+                    output=str(parquet_path) if parquet_path else None,
                 )
 
-
             except Exception as e:
+                # Importante: Capturar el traceback para debug si falla
+                import traceback
+                traceback.print_exc()
+                
                 self.registry.update(
                     query_id,
                     status=QueryStatus.ERROR,
@@ -207,7 +191,10 @@ class QueryService:
                 )
 
             final_entry = self.registry.get(query_id)
-            _write_query_metadata(final_entry)
+            
+            # Persistir metadata json
+            if final_entry.status == QueryStatus.DONE:
+                _write_query_metadata(final_entry)
 
             if final_entry.status == QueryStatus.ERROR:
                 raise RuntimeError(final_entry.error)
