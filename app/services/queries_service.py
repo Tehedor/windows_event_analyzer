@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -41,9 +42,17 @@ def _write_query_metadata(entry) -> None:
 
     meta_path = parquet_path.with_suffix(".json")
     meta_path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(meta_path.parent, 0o777)
+    for parent in meta_path.parent.parents:
+        try:
+            os.chmod(parent, 0o777)
+        except:
+            pass
 
     with meta_path.open("w", encoding="utf-8") as f:
         json.dump(entry.to_dict(), f, indent=2)
+    
+    os.chmod(meta_path, 0o666)
 
 
 # -------------------------------------------------------------------------

@@ -4,6 +4,7 @@ from typing import Dict, Any
 from collections import defaultdict
 
 from core._6_event_dictionary import build_event_dictionary
+from debug.debug import save_debug_info
 
 
 def build_component_dictionary(config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -11,10 +12,10 @@ def build_component_dictionary(config: Dict[str, Any]) -> Dict[str, Dict[str, An
     Construye el diccionario de componentes agrupando eventos por componente
     y lo devuelve (sin exportar a JSON).
     """
-    
+    # save_debug_info(config, filename="config_for_component_dictionary.json", head="Config used for Component Dictionary")
     # 1️⃣ Obtener event dictionary enriquecido
     event_dict = build_event_dictionary(config)
-    
+    # save_debug_info(event_dict, filename="event_dictionary_for_component_dictionary.json", head="Event Dictionary used for Component Dictionary")
     # 2️⃣ Agrupar por componente
     components: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
         "component": "",
@@ -35,6 +36,7 @@ def build_component_dictionary(config: Dict[str, Any]) -> Dict[str, Dict[str, An
             "final_color": event_data["final_color"],
             "intensity": event_data["intensity"],
         })
+    save_debug_info(components, filename="component_dictionary_raw.json", head="Raw Component Dictionary before sorting")
     
     # 3️⃣ Convertir a dict normal y devolver
     return {k: dict(v) for k, v in components.items()}

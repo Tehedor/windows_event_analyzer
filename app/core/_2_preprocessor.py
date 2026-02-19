@@ -1,4 +1,7 @@
 # app/helpers/_2_preprocessor.py 
+from asyncio.log import logger
+from logging import info
+from math import log
 from pathlib import Path
 from typing import Dict, Any
 
@@ -6,6 +9,11 @@ import os
 import ast
 import pandas as pd
 import numpy as np  # <--- IMPORTANTE: Necesario para detectar el array
+
+# from app.debug.debug import save_debug_info
+from debug.debug import save_debug_info
+
+
 
 def load_or_preprocess_dataset(config: Dict[str, Any]) -> pd.DataFrame:
     """
@@ -87,6 +95,7 @@ def _normalize_events(value):
 
 
 def _preprocess_dataframe(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
+    print("Iniciando preprocesamiento del dataset...")
     df = df.copy()
 
     separator = config["processing"]["separator"]
@@ -123,6 +132,10 @@ def _preprocess_dataframe(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFr
     # MultiIndex
     df = df.set_index([obs_index_col, pred_index_col])
 
+    save_debug_info(df.head(10), filename="preprocessed_dataset_sample.json", head="Sample of Preprocessed Dataset")
+    # logger.info(f"Dataset preprocesado con éxito. Número de filas: {len(df)}")
+    print(f"Dataset preprocesado con éxito. Número de filas: {len(df)}")
+
     return df
 
 
@@ -136,5 +149,10 @@ def _save_processed_dataset(df: pd.DataFrame, path: Path) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o777)
+    for parent in path.parent.parents:
+        try:
+            os.chmod(parent, 0o777)
+        except:
+            pass
     df.to_parquet(path)
     os.chmod(path, 0o666)

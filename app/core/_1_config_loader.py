@@ -94,7 +94,7 @@ def _resolve_dynamic_execution_paths(config: Dict[str, Any], project_root: Path,
     current_variant_path = base_raw_path / version
     
     # A. Dataset RAW
-    parquet_name = "03_preparewindowsds_dataset.parquet"
+    parquet_name = paths.get("parquet_name", "03_preparewindowsds_dataset.parquet")
     raw_parquet_path = current_variant_path / parquet_name
     
     if not raw_parquet_path.exists():
@@ -122,11 +122,12 @@ def _resolve_dynamic_execution_paths(config: Dict[str, Any], project_root: Path,
     executions_root = base_raw_path.parent 
     path_02 = executions_root / "02_prepareeventsds" / parent_variant
     
-    dict_name = "02_prepareeventsds_event_catalog.json"
+    dict_name = paths.get("dictionary_name", "02_prepareeventsds_event_catalog.json")
     dict_path = path_02 / dict_name
     config["paths"]["dataset_dicctionary"] = str(dict_path)
 
-    metadata_path = path_02 / "02_prepareeventsds_metadata.json"
+    metadata_name = paths.get("metadata_name", "02_prepareeventsds_metadata.json")
+    metadata_path = path_02 / metadata_name
     found_percentiles = None
     if metadata_path.exists():
         with open(metadata_path, "r") as f:
@@ -193,7 +194,13 @@ def _config_env_to_dict(settings_dict: Dict[str, Any]) -> Dict[str, Any]:
         "components_config": get_val("COMPONENTS_CTRL"),
         
         # Mapeamos la nueva variable base
-        "output_base": get_val("OUTPUT_BASE_PATH", "output"),
+        "output_base": get_val("OUTPUT_DIR", "output"),
+    }
+
+    filenames = {
+        "parquet_name": get_val("PARQUET_NAME"),
+        "metadata_name": get_val("METADATA_NAME"),
+        "dictionary_name": get_val("DICTIONARY_NAME"),
     }
 
     columns = {
@@ -206,16 +213,19 @@ def _config_env_to_dict(settings_dict: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     config_env: Dict[str, Any] = {
-        "paths": {k: v for k, v in paths.items() if v is not None},
+        "paths": {k: v for k, v in {**paths, **filenames}.items() if v is not None},
         "columns": columns,
     }
     
     return config_env
 
 def _resolve_paths(config: Dict[str, Any], base_dir: Path) -> None:
+    # Excluir nombres de archivo (no son rutas)
+    exclude_keys = {"parquet_name", "metadata_name", "dictionary_name", "output_base"}
+    
     paths = config.get("paths", {})
     for key, value in paths.items():
-        if not value: continue
+        if not value or key in exclude_keys: continue
         p = Path(value)
         if not p.is_absolute():
             paths[key] = str((base_dir / p).resolve())

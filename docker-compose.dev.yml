@@ -8,22 +8,20 @@ services:
       - "8050:8050"
     volumes:
       - ./app:/app
+      - /home/tehe/Work/tfm/datasets/ines/executions/executions:/app/executions
       # - ./files_output/:/output
-      - ./executions:/app/executions
       # - ./epoch_processed:/app/epoch_processed
       - ./files_output/queries:/app/output/
       - ./files_output/multi_requests_file.yml:/app/scripts/multi_requests_file.yml
+      - ./components.yml:/app/components.yml
+      - ./epoch_processed:/app/epoch_processed
     environment:
-      - DASH_DEBUG=true
-      # - DATASET_RAW_PATH=${DATASET_RAW_PATH:-}
-      # - DATASET_PROCESSED_PATH=${DATASET_PROCESSED_PATH:-}
-      # - OUTPUT_DIR=${OUTPUT_DIR:-}
-      # - OUTPUT_DIR_CSV=${OUTPUT_DIR_CSV:-}
-      # - DATASET_DICTIONARY_PATH=${DATASET_DICTIONARY_PATH:-}
-      # - OBS_EVENTS_COLUMN=${OBS_EVENTS_COLUMN:-}
-      # - PRED_EVENTS_COLUMN=${PRED_EVENTS_COLUMN:-}
-      # - PERCENTILES=${PERCENTILES:-}
-    # command: python app.py
+      DASH_DEBUG: "true"
+      SERVER_PORT: "8060"
+      WINDOW_VERSION: "${WINDOW_VERSION:-v001}"
+      OBS_EVENTS_COLUMN: "OW_events"
+      PRED_EVENTS_COLUMN: "PW_events"
+      DATASET_PROCESSED_PATH: "/app/epoch_processed"
     command: uvicorn main:app --host 0.0.0.0 --port 8050 --reload
     
     # LIMITACIÓN DE RECURSOS

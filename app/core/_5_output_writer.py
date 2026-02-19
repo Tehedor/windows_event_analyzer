@@ -25,10 +25,20 @@ def save_results(
     output_dir = Path(config["paths"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
     os.chmod(output_dir, 0o777)  # Asegura permisos de lectura/escritura/ejecución
+    for parent in output_dir.parents:
+        try:
+            os.chmod(parent, 0o777)
+        except:
+            pass
     
     output_dir_csv = Path(config["paths"]["output_dir_csv"])
     output_dir_csv.mkdir(parents=True, exist_ok=True)
     os.chmod(output_dir_csv, 0o777)  # Asegura permisos de lectura/escritura/ejecución
+    for parent in output_dir_csv.parents:
+        try:
+            os.chmod(parent, 0o777)
+        except:
+            pass
 
     # Obtenemos el nombre base sin extensión
     base_filename = _build_filename(src_pattern, dst_pattern)

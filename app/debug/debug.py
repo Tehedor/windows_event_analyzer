@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import logging
+import os
 from typing import Optional, Any
 
 log = logging.getLogger("debug")
@@ -39,7 +40,9 @@ def save_debug_info(content_source: Any, filename: Optional[str] = "info_debug",
         if head:
             content_str = f"{head}\n\n{content_str}"
 
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(content_str, encoding="utf-8")
+        os.chmod(out_path, 0o666)
         log.info("Info debug exportado a %s", out_path)
         return out_path
     except Exception:
