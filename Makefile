@@ -140,7 +140,7 @@ ctrl_python:
 ######################################################################################
 #####   OTROS   
 ######################################################################################
-.PHONY: make_tar_datasets extract_tar_datasets cat_all_py tree
+.PHONY: make_tar_datasets extract_tar_datasets cat_all_py tree clean clean_processed clean_queries
 make_tar_datasets:
 	@echo "📦 Creando archivo comprimido de Datasets..."
 	@tar -czvf Datasets.tar.gz Datasets/
@@ -164,3 +164,15 @@ tree:
 	@cd app && \
 	tree . > a && \
 	code a
+
+
+clean_queries:
+	@echo "🧹 Limpiando archivos de queries..."
+	@rm -rf files_output/queries
+
+clean_processed:
+	@echo "🧹 Limpiando archivos procesados..."
+	@rm -rf epoch_processed
+
+clean: clean_queries clean_processed
+	@echo "🧹 Limpieza completa de archivos de queries y procesados."
