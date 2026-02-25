@@ -16,11 +16,17 @@ export const API = {
         return await res.json();
     },
 
-    async fetchQueryData(queryId, offset = 0, limit = 500) {
+    async fetchQueryData(queryId, offset = 0, limit = 250) {
         const res = await fetch(
             `/query/${queryId}/data?offset=${offset}&limit=${limit}`
         );
         if (!res.ok) throw new Error("Error cargando datos");
+        return await res.json();
+    },
+
+    async fetchComponentDict() {
+        const res = await fetch("/componentDict");
+        if (!res.ok) throw new Error("Error cargando diccionario de componentes");
         return await res.json();
     }
 };

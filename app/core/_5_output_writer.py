@@ -30,7 +30,7 @@ def save_results(
             os.chmod(parent, 0o777)
         except:
             pass
-    
+    print(f"📁 Guardando resultados en: {output_dir}")
     output_dir_csv = Path(config["paths"]["output_dir_csv"])
     output_dir_csv.mkdir(parents=True, exist_ok=True)
     os.chmod(output_dir_csv, 0o777)  # Asegura permisos de lectura/escritura/ejecución
@@ -93,26 +93,66 @@ def _build_filename(
     # return f"{name}__{timestamp}" # Descomentar si quieres timestamp
 
 
+# def _sanitize(value: str) -> str:
+#     """
+#     Limpia una string para que sea segura como nombre de fichero
+#     y evita separadores finales.
+#     """
+
+#     value = value.strip().lower()
+
+#     # 🔑 eliminar separadores lógicos al final (muy importante)
+#     value = value.rstrip(",.-_")
+
+#     value = value.replace(" ", "")
+#     value = value.replace(",", "-")
+#     value = value.replace("*", "star")
+#     value = value.replace("?", "any")
+
+#     # eliminar cualquier cosa rara
+#     value = re.sub(r"[^a-z0-9_\-]+", "", value)
+
+#     # 🔑 evitar guiones finales
+#     value = value.rstrip("-")
+
+#     return value
 def _sanitize(value: str) -> str:
     """
-    Limpia una string para que sea segura como nombre de fichero
-    y evita separadores finales.
+    Limpia una string para que sea segura como nombre de fichero,
+    traduciendo símbolos lógicos y marcando explícitamente el inicio y fin de los grupos.
     """
-
     value = value.strip().lower()
 
-    # 🔑 eliminar separadores lógicos al final (muy importante)
-    value = value.rstrip(",.-_")
-
+    # 1. Eliminar espacios
     value = value.replace(" ", "")
-    value = value.replace(",", "-")
+
+    # 2. Traducir símbolos lógicos y comodines
     value = value.replace("*", "star")
     value = value.replace("?", "any")
+    value = value.replace("|", "_or_")
+    value = value.replace("&", "_and_")
+    value = value.replace("!", "not_")
+    
+    # 3. Manejar pertenencia (llaves)
+    value = value.replace("{", "has_")
+    value = value.replace("}", "")  # Si quisieras, podrías poner "_endhas", pero suele recargar mucho el nombre
+    
+    # 4. Manejar agrupaciones (paréntesis) con la nomenclatura que prefieres
+    value = value.replace("(", "set_")
+    value = value.replace(")", "_endset")
 
-    # eliminar cualquier cosa rara
+    # 5. Separadores de secuencia (comas se vuelven guiones)
+    value = value.replace(",", "-")
+
+    # 6. Eliminar cualquier carácter extraño que quede
     value = re.sub(r"[^a-z0-9_\-]+", "", value)
 
-    # 🔑 evitar guiones finales
-    value = value.rstrip("-")
+    # 7. Limpiar guiones o barras bajas duplicadas y combinaciones raras (estética)
+    value = re.sub(r"_+", "_", value)
+    value = re.sub(r"-+", "-", value)
+    value = value.replace("-_", "_").replace("_-", "_") # Limpia casos como "148-_endset" a "148_endset"
+
+    # 8. Evitar separadores al principio o al final
+    value = value.strip(".-_")
 
     return value

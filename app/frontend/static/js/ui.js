@@ -4,6 +4,7 @@ import { renderVisualization } from "./visualizer.js";
 
 export function renderQueriesList(queries) {
     const list = document.getElementById("queries-list");
+    // console.log("Renderizando lista de queries:", queries);
     list.innerHTML = "";
 
     queries.forEach(q => {
@@ -12,11 +13,17 @@ export function renderQueriesList(queries) {
         li.dataset.queryId = q.query_id;
 
         li.innerHTML = `
-            <div>src=${q.src_raw ?? q.src} | dst=${q.dst_raw ?? q.dst}</div>
-            <div class="query-status ${q.status}">${q.status}</div>
+            <div class="query-main">
+                src=${q.src_raw ?? q.src} | dst=${q.dst_raw ?? q.dst}
+            </div>
+            <div class="query-meta">
+                ${q.status === "done" ? `<span class="query-rows">${q.rows} filas</span>` : ""}
+                <span class="query-status ${q.status}">${q.status}</span>
+            </div>
         `;
-
-        li.onclick = () => selectQuery(q.query_id);
+        if (q.status !== "running") {
+            li.onclick = () => selectQuery(q.query_id);
+        }
         list.appendChild(li);
     });
 

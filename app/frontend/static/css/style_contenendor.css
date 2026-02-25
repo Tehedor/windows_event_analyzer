@@ -1,0 +1,404 @@
+/* css/style_contenedor.css */
+/* ===================================================== */
+/* VISUALIZACIÓN: CONTENEDOR PRINCIPAL */
+/* ===================================================== */
+
+#visualization-container {
+    display: flex;                
+    flex-direction: column;       
+    height: 100%;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 15px 15px 0 15px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 🔥 CORRECCIÓN: El scrollbar se aplica a "-content", no a "-container" */
+#visualization-content::-webkit-scrollbar {
+    height: 8px; /* Un poco más fino y elegante */
+}
+
+#visualization-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
+
+#visualization-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#visualization-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+#visualization-content {
+    flex: 1;                      
+    min-height: 0;                
+    overflow-x: auto;
+    overflow-y: auto;
+    z-index: 1;
+    margin-bottom: 0 !important; /* Fuerza a eliminar cualquier hueco debajo del scroll */
+}
+
+/* ===================================================== */
+/* CONTROLES DE PAGINACIÓN */
+/* ===================================================== */
+#pagination-controls {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    
+    /* 🔥 CORRECCIÓN DEL ESPACIO FANTASMA */
+    margin-top: 0px;       /* Pega la línea divisoria directamente al contenido de arriba */
+    padding-top: 8px;      /* Da aire POR DENTRO para que el texto no se asfixie contra la línea */
+    padding-bottom: 2px;   
+    
+    border-top: 1px solid #e5e7eb;
+    background-color: #ffffff;
+    z-index: 10;
+}
+
+
+.pag-btn {
+    /* 👇 Hacemos los botones más finos */
+    padding: 4px 10px;     /* Antes era 6px 12px */
+    
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 11px;       /* Reducimos un punto la fuente (antes 12px) */
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pag-btn:hover:not(:disabled) {
+    background-color: #e5e7eb;
+    color: #111827;
+}
+
+.pag-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 12px;       /* Un pelín más pequeño para que encaje bien */
+    color: #374151;
+}
+
+/* ===================================================== */
+/* VISUALIZACIÓN: VENTANAS (WINDOWS) */
+/* ===================================================== */
+
+.window {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    min-width: 100%;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.window-label {
+    position: sticky;
+    left: -4px;
+    z-index: 20;
+    /* background-color: #fff; */
+    width: 28px;
+    font-weight: bold;
+    font-size: 11px;
+    /* padding-right: 2px; */
+    flex-shrink: 0;
+}
+
+.window-events {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.window-events::-webkit-scrollbar {
+    height: 3px;
+}
+
+.window-events::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+
+.window-separator {
+    width: 5px;
+    background-color: #111;
+    margin: 0 12px;
+    border-radius: 4px;
+    align-self: stretch;
+}
+
+.no-data-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 24px;
+    text-align: center;
+    color: #9EA2AA;
+    font-size: 20px;
+    font-weight: 600;
+    flex: 1;
+}
+
+/* ===================================================== */
+/* VISUALIZACIÓN: EVENT BLOCKS COMPACTOS */
+/* ===================================================== */
+
+.event-block {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    user-select: none;
+    cursor: default;
+}
+
+.event-block.compact {
+    flex: 0 0 auto;
+    min-width: 50px;
+    height: 28px;
+    /* ✅ Número pegado a la izquierda (1px) y rangos con aire a la derecha (4px) */
+    padding: 0 4px 0 1px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* ===================================================== */
+/* VISUALIZACIÓN: GRID INTERNO DE EVENTS (COMPACTO) */
+/* ===================================================== */
+
+.mini-grid {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    /* ✅ Cambiado a center para que el contenido no se escape a los bordes */
+    justify-content: center;
+}
+
+.col-id {
+    font-size: 10px;
+    font-weight: bold;
+    text-align: right;
+    /* ✅ Ocupa solo su espacio para pegarse a la barra */
+    flex: 0 0 auto;
+}
+
+.col-sep {
+    font-size: 14px;
+    font-weight: 100;
+    /* ✅ Separación mínima de 1.5px entre números y barra */
+    margin: 0 1.5px;
+    opacity: 0.6;
+}
+
+.col-stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* ✅ Ocupa solo su espacio para pegarse a la barra */
+    flex: 0 0 auto;
+    line-height: 0.85;
+}
+
+.row-range {
+    font-size: 8px;
+    text-align: left;
+    white-space: nowrap;
+    transform: scale(0.9);
+    /* ✅ Escalado desde la izquierda para mantener cercanía al separador */
+    transform-origin: left center;
+}
+
+
+/* ===================================================== */
+/* MODO COMPACTO */
+/* ===================================================== */
+
+/* ===================================================== */
+/* SWITCH MODO VISTA - VERSIÓN MINI */
+/* ===================================================== */
+
+/* 1️⃣ EL CONTENEDOR (La "cosa blanca que lo rodea") */
+#view-mode-switch {
+    position: sticky;
+    top: 10px;
+    right: 10px;
+    margin-left: auto;
+    
+    /* Estilo visual */
+    background-color: #ffffff; 
+    border: 1px solid #d1d5db;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); /* Sombra más sutil para tamaño pequeño */
+    border-radius: 20px;
+    
+    /* 👇 PADDING MINIMALISTA */
+    padding: 2px 5px; 
+    
+    /* Ajustes de tamaño y posición */
+    width: max-content;
+    height: auto;
+    /* 👇 MARGEN NEGATIVO REAJUSTADO (para que no empuje el contenido) */
+    margin-bottom: -24px;
+    z-index: 9999;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ocultamos checkbox real */
+#toggle-view-mode {
+    display: none;
+}
+
+#visualization-container.compact-mode .event-block {
+    width: 20px;
+    height: 18px;
+    font-size: 8px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;          /* 🔥 elimina separación */
+}
+
+#visualization-container.dragging {
+    cursor: grabbing;
+    user-select: none;
+}
+
+#visualization-container.compact-mode .window-label {
+    font-size: 11px;
+    min-width: 20px;
+}
+
+#visualization-container.compact-mode .mini-grid {
+    display: none;
+}
+
+#visualization-container.compact-mode .window-events {
+    gap: 0;
+}
+
+#visualization-container.compact-mode .window {
+    margin-bottom: 2px;   /* casi pegadas */
+    gap: 4px;
+}
+
+#visualization-container.compact-mode {
+    padding: 4px;
+}
+
+#visualization-container.compact-mode .window {
+    display: flex;
+    align-items: center;
+}
+
+#visualization-container.compact-mode .window-label {
+    font-size: 9px;
+    min-width: 16px;
+    margin-right: 4px;
+}
+
+#visualization-container.compact-mode .window {
+    min-width: unset;
+}
+
+#visualization-container.compact-mode .event-block.compact {
+    min-width: 0;
+}
+
+/* 2️⃣ EL INTERRUPTOR INTERNO (El óvalo de color) */
+.switch {
+    /* 👇 TAMAÑO MUCHO MÁS PEQUEÑO */
+    width: 34px;  /* Antes 42px */
+    height: 16px; /* Antes 22px */
+    
+    background-color: #d1d5db;
+    border-radius: 20px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.25s ease;
+}
+
+/* 3️⃣ LA BOLITA INTERNA (El círculo blanco) */
+.switch::after {
+    content: "";
+    /* 👇 BOLITA MÁS PEQUEÑA */
+    width: 12px;  /* Antes 18px */
+    height: 12px; /* Antes 18px */
+    
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.25s ease;
+}
+
+/* Estado activo (color de fondo) */
+#toggle-view-mode:checked + .switch {
+    background-color: #2563eb;
+}
+
+/* Estado activo (movimiento de la bolita) */
+#toggle-view-mode:checked + .switch::after {
+    /* 👇 DISTANCIA RECALCULADA para el nuevo ancho */
+    transform: translateX(18px); /* Antes 20px */
+}
+
+.switch:hover {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+#visualization-container {
+    cursor: grab;
+}
+
+#visualization-container.dragging {
+    cursor: grabbing;
+}
+
+
+/* ===================================================== */
+/* OPTIMIZACIÓN DE RENDIMIENTO */
+/* ===================================================== */
+
+.window {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    min-width: 100%;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+
+

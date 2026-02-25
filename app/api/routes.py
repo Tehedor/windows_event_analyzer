@@ -1,75 +1,94 @@
 # api/routes.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
 
 import pandas as pd
 import numpy as np
 
-import json
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, Any
 
-from api.schemas import (
-    QueryRequest,
-    QueryResponse,
-    # QueryListResponse, # Descomentar si usas schemas de lista
-)
+from api.schemas import QueryRequest, QueryResponse
 from api.dependencies import get_query_service
 from services.queries_service import QueryService
-from core._6_event_dictionary import build_event_dictionary
+from config_env import settings_env
 
 router = APIRouter()
 
 
+# =========================================================
+# 🚀 EJECUCIÓN ASÍNCRONA DE QUERY
+# =========================================================
+
 @router.post("/query", response_model=QueryResponse)
 async def run_query(
     payload: QueryRequest,
+    background_tasks: BackgroundTasks,
     service: QueryService = Depends(get_query_service),
 ):
     """
-    Ejecuta una consulta.
-    Usa run_in_threadpool para no bloquear el servidor mientras calcula.
+    1️⃣ Crea metadata en estado 'running'
+    2️⃣ Lanza ejecución en background
+    3️⃣ Devuelve inmediatamente el query_id
     """
+
     if not payload.src and not payload.dst:
         raise HTTPException(
             status_code=400,
             detail="Debe especificarse al menos src o dst",
         )
 
-    # service.run puede tardar, así que lo ejecutamos en un hilo aparte
-    return await run_in_threadpool(service.run, payload.src, payload.dst)
+    # 🔹 Crear metadata inicial (running)
+    query_id = await run_in_threadpool(
+        service.create_query,
+        payload.src,
+        payload.dst
+    )
 
+    # 🔹 Ejecutar en segundo plano
+    background_tasks.add_task(service.execute_query, query_id)
+
+    # 🔹 Respuesta inmediata
+    return {
+        "query_id": query_id,
+        "rows": 0,
+        "output": None,
+        "cached": False,
+    }
+
+
+# =========================================================
+# 📋 LISTAR QUERIES
+# =========================================================
 
 @router.get("/queries")
-async def list_queries(service: QueryService = Depends(get_query_service)):
-    """
-    Lista las consultas disponibles.
-    Async para mantener consistencia, aunque sea una operación rápida.
-    """
+async def list_queries(
+    service: QueryService = Depends(get_query_service)
+):
     return await run_in_threadpool(service.list_queries)
 
 
+# =========================================================
+# 🔍 OBTENER METADATA DE UNA QUERY
+# =========================================================
+
 @router.get("/query/{query_id}")
 async def get_query(
-    query_id: str, 
-    service: QueryService = Depends(get_query_service)
+    query_id: str,
+    service: QueryService = Depends(get_query_service),
 ):
-    """
-    Lee los metadatos de una consulta (JSON).
-    La lectura de disco se mueve a un hilo secundario.
-    """
-    queries_dir = Path(service.config["paths"]["output_dir"])
-    meta_path = queries_dir / f"{query_id}.json"
+    entry = service.registry.get(query_id)
 
-    if not meta_path.exists():
+    if not entry:
         raise HTTPException(status_code=404, detail="Query no encontrada")
 
-    def _read_json():
-        with meta_path.open("r", encoding="utf-8") as f:
-            return json.load(f)
+    return entry.to_dict()
 
-    return await run_in_threadpool(_read_json)
 
+# =========================================================
+# 📊 DATOS PAGINADOS
+# =========================================================
 
 @router.get("/query/{query_id}/data")
 async def get_query_data(
@@ -78,16 +97,13 @@ async def get_query_data(
     limit: int = Query(500, ge=1, le=2000),
     service: QueryService = Depends(get_query_service),
 ):
-    """
-    Obtiene los datos del parquet paginados.
-    CRÍTICO: Pandas bloquea el CPU y el IO. Toda la lógica de lectura y
-    procesamiento se encapsula en _process_data y se envía al threadpool.
-    """
-    # 1️⃣ Validaciones ligeras (se mantienen en el main thread)
     entry = service.registry.get(query_id)
 
     if not entry:
         raise HTTPException(status_code=404, detail="Query no encontrada")
+
+    if entry.status != "done":
+        raise HTTPException(status_code=400, detail="Query aún en ejecución")
 
     if not entry.output:
         raise HTTPException(status_code=404, detail="Query sin output")
@@ -97,41 +113,51 @@ async def get_query_data(
     if not parquet_path.exists():
         raise HTTPException(status_code=404, detail="Parquet no encontrado")
 
-    # 2️⃣ Definir función bloqueante (IO + CPU intensivo)
+    # --------------------------------------------------
+    # Procesamiento pesado → threadpool
+    # --------------------------------------------------
+
     def _process_data() -> Dict[str, Any]:
-        # Cargar dataset (IO Bound)
+
         df = pd.read_parquet(parquet_path)
         total = len(df)
 
-        # Aplicar paginación (CPU Bound - memoria)
-        df_slice = df.iloc[offset : offset + limit]
+        df_slice = df.iloc[offset: offset + limit]
 
-        # Conversión segura a JSON (CPU Bound - iteración)
         records = []
         columns = df_slice.reset_index().columns
-        
-        # Iterar eficientemente
-        # Nota: iterrows o itertuples sigue siendo "lento" en Python puro,
-        # pero al estar en un hilo aparte, no bloquea al resto de usuarios.
+
         for row in df_slice.reset_index().itertuples(index=False):
             record = {}
+
             for field, value in zip(columns, row):
-                # Sanitización de tipos de NumPy para JSON estándar
+
                 if isinstance(value, (np.integer, int)):
                     value = int(value)
+
                 elif isinstance(value, (np.floating, float)):
                     value = float(value) if not np.isnan(value) else None
+
                 elif isinstance(value, (np.ndarray, list)):
                     value = value.tolist() if isinstance(value, np.ndarray) else value
+
                 elif isinstance(value, tuple):
                     value = list(value)
-                # Manejo de NaNs generales
+
                 elif pd.isna(value):
                     value = None
-                
-                record[field] = value
+
+                if field == settings_env.OBS_EVENTS_COLUMN:
+                    record["obs_events"] = value
+
+                elif field == settings_env.PRED_EVENTS_COLUMN:
+                    record["pred_events"] = value
+
+                else:
+                    record[field] = value
+
             records.append(record)
-            
+
         return {
             "query_id": query_id,
             "total": total,
@@ -140,29 +166,28 @@ async def get_query_data(
             "rows": records,
         }
 
-    # 3️⃣ Ejecutar en Threadpool y esperar resultado sin bloquear
     return await run_in_threadpool(_process_data)
 
+
+# =========================================================
+# 📚 EVENT DICTIONARY
+# =========================================================
 
 @router.get("/events")
 async def get_event_dictionary(
     service: QueryService = Depends(get_query_service),
 ):
-    """
-    Devuelve el diccionario enriquecido de eventos.
-    Usa caché interno del servicio para evitar reconstruirlo en cada request.
-    """
     return await run_in_threadpool(service.get_event_dictionary)
 
 
+# =========================================================
+# 🧩 COMPONENT DICTIONARY
+# =========================================================
 
 @router.get("/componentDict")
 async def get_component_dictionary(
     service: QueryService = Depends(get_query_service),
 ):
-    """
-    Devuelve el diccionario completo de componentes.
-    """
     return await run_in_threadpool(service.get_component_dictionary)
 
 
@@ -170,7 +195,4 @@ async def get_component_dictionary(
 async def get_component_dictionary_compact(
     service: QueryService = Depends(get_query_service),
 ):
-    """
-    Devuelve el diccionario compacto de componentes.
-    """
     return await run_in_threadpool(service.get_component_dictionary_compact)

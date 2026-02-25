@@ -1,5 +1,6 @@
 # app/core/_3_input_controller.py
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Union
@@ -15,6 +16,8 @@ from core.dsl_ast import (
     And,
     Not,
 )
+
+logger = logging.getLogger("uvicorn")
 
 @dataclass
 class QueryPattern:
@@ -33,6 +36,8 @@ def parse_pattern(raw_pattern: str, column_type: str, config: Dict[str, Any]) ->
     """
     Parsea un string de consulta (DSL) y devuelve un objeto QueryPattern compilado.
     """
+    logger.info(f"🔎 parse_pattern llamado con: {raw_pattern!r} (tipo: {column_type})")
+    
     # 1. Validaciones básicas
     if not isinstance(raw_pattern, str) or not raw_pattern.strip():
         # Si llega vacío, devolvemos un patrón que no hace match con nada o match con todo
@@ -45,6 +50,7 @@ def parse_pattern(raw_pattern: str, column_type: str, config: Dict[str, Any]) ->
 
     # 2. Tokenización (Detecta números, símbolos y @Alias)
     tokens = tokenize(raw_pattern)
+    logger.info(f"📝 Tokens generados: {tokens}")
 
     # 3. Parsing y Construcción del AST (Aquí se resuelven los Alias usando config)
     ast = parse(tokens, config)
@@ -228,6 +234,8 @@ def resolve_alias(alias_token: str, config: Dict[str, Any]) -> Expr:
     @Alias -> Value(x)  O  Or(Value(x), Value(y)...)
     """
     name = alias_token[1:] # Quitar '@'
+
+    logger.info(f"🔍 Resolviendo alias: {alias_token} (componente: {name})")
     
     # Busca en config['components'] o config['datasets']['components'] según estructura
     components = config.get("components")
@@ -236,19 +244,25 @@ def resolve_alias(alias_token: str, config: Dict[str, Any]) -> Expr:
         components = config.get("datasets", {}).get("components")
 
     if not components or name not in components:
+        logger.error(f"❌ Alias desconocido: {alias_token}")
         raise ValueError(f"Alias desconocido o configuración vacía: {alias_token}")
 
     values = components[name]
     if not values:
+        logger.error(f"❌ Alias vacío: {alias_token}")
         raise ValueError(f"El alias {alias_token} está vacío en la configuración")
+
+    logger.info(f"✅ Alias {alias_token} expandido a {len(values)} valores: {values}")
 
     # Convertir lista de ints a nodos Value
     value_nodes = [Value(v) for v in values]
 
     if len(value_nodes) == 1:
+        logger.debug(f"   → Resultado: Value({values[0]})")
         return value_nodes[0]
     
     # Si hay múltiples valores, es un OR lógico (uno de estos valores)
+    logger.debug(f"   → Resultado: Or({', '.join(str(v) for v in values)})")
     return Or(frozenset(value_nodes))
 
 

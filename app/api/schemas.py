@@ -13,11 +13,10 @@ class QueryRequest(BaseModel):
 #     rows: int
 #     output: str
 class QueryResponse(BaseModel):
-    query_id: str      # ✅ AÑADIR ESTE CAMPO
+    query_id: str
     rows: int
-    output: str
-    cached: bool = False  # ✅ OPCIONAL pero útil
-
+    output: Optional[str] = None
+    cached: bool = False
 
 class QueryListResponse(BaseModel):
     queries: list[str]

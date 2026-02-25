@@ -45,8 +45,8 @@ queries:
   # # ==========================================
 
   # Contiene el evento 511 en cualquier posición
-  - src: "(49,143, 148,*) | (143,148,143,*)"
-    dst: null
+  # - src: "(49,143, 148,*) | (143,148,143,*)"
+  #   dst: null
 
   # NO contiene el evento 511 (Negación de conjunto)
   # - src: "(49,143, 148,*) | (143,148,143,*) & (*, 106, 111)"
@@ -89,26 +89,20 @@ queries:
   # # 'Outlet_Temperature' o 'MG-LV-MSB_Frequency'
 
   # # Alias simple
-  # - src: "@Outlet_Temperature"
-  #   dst: null
+  - src: "@Outlet_Temperature"
+    dst: null
 
   # # Alias combinado con OR
-  # - src: "@Outlet_Temperature | @Battery_Active_Power"
+  # - src: "@Outlet_Temperature | @MG-LV-MSB_Frequency"
   #   dst: null
-
-  - src: "*,@Outlet_Temperature | @Battery_Active_Power,*"
-    dst: null
-
-  - src: "*,(@Outlet_Temperature | @Battery_Active_Power),*"
-    dst: null
 
   # # ==========================================
   # # 6. INTERACCIÓN SRC (Observación) y DST (Predicción)
   # # ==========================================
 
   # # Patrón en SRC y Patrón en DST
-  - src: "475,*"      # Obs empieza por 475
-    dst: "{511}"      # Predicción contiene 511
+  # - src: "475,*"      # Obs empieza por 475
+  #   dst: "{511}"      # Predicción contiene 511
 
   # # Solo DST (SRC cualquiera por defecto o null)
   # - src: null
@@ -147,5 +141,37 @@ queries:
 
 
 # components:
-  # - src: "*,@Battery_Active_Power,*"
+  - src: "*,@Battery_Active_Power,*"
+    dst: null
+  # - src: "*,@Battery_Active_Power_Set_Response,*"
+  #   dst: null
+  # - src: "*,@PVPCS_Active_Power,*"
+  #   dst: null
+  # - src: "*,@GE_Body_Active_Power,*"
+  #   dst: null
+  # - src: "*,@GE_Active_Power,*"
+  #   dst: null
+  # - src: "*,@GE_Body_Active_Power_Set_Response,*"
+  #   dst: null
+  # - src: "*,@FC_Active_Power_FC_END_Set,*"
+  #   dst: null
+  # - src: "*,@FC_Active_Power,*"
+  #   dst: null
+  # - src: "*,@FC_Active_Power_FC_end_Set_Response,*"
+  #   dst: null
+  # - src: "*,@Island_mode_MCCB_Active_Power,*"
+  #   dst: null
+  # - src: "*,@MG-LV-MSB_AC_Voltage,*"
+  #   dst: null
+  # - src: "*,@Receiving_Point_AC_Voltage,*"
+  #   dst: null
+  # - src: "*,@Island_mode_MCCB_AC_Voltage,*"
+  #   dst: null
+  # - src: "*,@Island_mode_MCCB_Frequency,*"
+  #   dst: null
+  # - src: "*,@MG-LV-MSB_Frequency,*"
+  #   dst: null
+  # - src: "*,@Inlet_Temperature_of_Chilled_Water,*"
+  #   dst: null
+  # - src: "*,@Outlet_Temperature,*"
   #   dst: null

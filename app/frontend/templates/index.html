@@ -4,9 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Visualizador de Ventanas</title>
+    
 
     <!-- CSS principal -->
     <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/style_contenendor.css">
 </head>
 <body>
 
@@ -15,6 +17,14 @@
     <!-- ===================================================== -->
     <header id="app-header">
         <h1>Visualizador de Ventanas</h1>
+        <a 
+            href="https://github.com/Tehedor/windows_event_analyzer/blob/main/DSL_consulta.md" 
+            target="_blank" 
+            class="header-doc-link"
+            title="Ver documentación de consultas"
+        >
+            📚 Documentación
+        </a>
     </header>
 
     <!-- ===================================================== -->
@@ -31,6 +41,10 @@
             <!-- (2) ÁREA DE VISUALIZACIÓN -->
             <!-- --------------------------------------------- -->
             <div id="visualization-container">
+                <div id="view-mode-switch">
+                    <input type="checkbox" id="toggle-view-mode" />
+                    <label for="toggle-view-mode" class="switch"></label>
+                </div>
 
                 <!-- Texto placeholder mientras no hay datos -->
                 <div id="visualization-placeholder">
@@ -50,62 +64,56 @@
         <!-- COLUMNA DERECHA -->
         <!-- ================================================= -->
         <section id="right-panel">
-
-            <!-- --------------------------------------------- -->
-            <!-- (3) SELECTOR DE CONSULTA -->
-            <!-- --------------------------------------------- -->
-            <div id="query-form-container">
-
-                <h2>Nueva consulta</h2>
-
-                <form id="query-form">
-
-                    <div class="form-group">
-                        <label for="src-input">Patrón src (observación)</label>
-                        <input
-                            type="text"
-                            id="src-input"
-                            name="src"
-                            placeholder="Ej: 475,484,*"
-                            autocomplete="off"
-                        >
+    
+            <div id="query-form-outer">
+                <div id="query-form-container">
+                    <div class="form-header">
+                        <h2>Nueva consulta</h2>
+                        <button id="toggle-form-btn" title="Comprimir/Expandir">▲</button>
                     </div>
-
-                    <div class="form-group">
-                        <label for="dst-input">Patrón dst (predicción)</label>
-                        <input
-                            type="text"
-                            id="dst-input"
-                            name="dst"
-                            placeholder="Ej: 511"
-                            autocomplete="off"
-                        >
-                    </div>
-
-                    <button type="submit" id="run-query-btn">
-                        Buscar
-                    </button>
-
-                </form>
-
+                    <form id="query-form">
+                        <div class="form-group">
+                            <label for="src-input">Patrón src (observación)</label>
+                            <input type="text" id="src-input" name="src" placeholder="Ej: 475,484,*" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="dst-input">Patrón dst (predicción)</label>
+                            <input type="text" id="dst-input" name="dst" placeholder="Ej: 511" autocomplete="off">
+                        </div>
+                        <button type="submit" id="run-query-btn">Buscar</button>
+                    </form>
+                </div>
             </div>
 
-            <!-- --------------------------------------------- -->
-            <!-- (4) LISTA DE CONSULTAS -->
-            <!-- --------------------------------------------- -->
-            <div id="queries-list-container">
-
-                <h2>Histórico de consultas</h2>
-
-                <ul id="queries-list">
-                    <!--
-                      ui.js inyectará aquí elementos <li>
-                      Cada item representará una query
-                    -->
-                </ul>
-
+            <div class="panel-tabs">
+                <button class="tab-btn active" data-target="view-consultas">Consultas</button>
+                <button class="tab-btn" data-target="view-diccionario">Diccionario</button>
             </div>
 
+            <div id="view-consultas" class="tab-view active">
+                <div id="queries-list-container">
+                    <h2>Histórico de consultas</h2>
+                    <ul id="queries-list"></ul>
+                </div>
+            </div>
+
+            <div id="view-diccionario" class="tab-view">
+                <div id="dictionary-container">
+                    <div id="custom-dropdown" class="custom-dropdown">
+                        <div class="dropdown-header" id="dropdown-header">
+                            <div style="display: flex; align-items: center;">
+                                <div id="component-color-box" class="color-box" style="background-color: #d1d5db;"></div>
+                                <span id="dropdown-selected-text">Todos los componentes</span>
+                            </div>
+                            <span class="dropdown-arrow">▼</span>
+                        </div>
+                        <ul class="dropdown-list" id="dropdown-list"></ul>
+                    </div>
+                </div>
+                <div id="dictionary-list-container">
+                    <ul id="dictionary-events-list"></ul>
+                </div>
+            </div>
         </section>
 
     </main>
@@ -113,11 +121,6 @@
     <!-- ===================================================== -->
     <!-- JS (se cargan al final) -->
     <!-- ===================================================== -->
-    <!-- <script src="/static/js/api.js"></script>
-    <script src="/static/js/state.js"></script>
-    <script src="/static/js/ui.js"></script>
-    <script src="/static/js/visualizer.js"></script>
-    <script src="/static/js/main.js"></script> -->
     <script type="module" src="/static/js/main.js"></script>
 
 

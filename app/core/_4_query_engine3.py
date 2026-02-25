@@ -68,6 +68,7 @@ def _apply_pattern(
 # -------------------------------------------------------------------------
 # Evaluación semántica del AST
 # -------------------------------------------------------------------------
+
 def evaluate_expr(expr: Expr, values: pd.Index, separator: str) -> np.ndarray:
     """
     values: pd.Index
@@ -102,33 +103,26 @@ def evaluate_expr(expr: Expr, values: pd.Index, separator: str) -> np.ndarray:
         regex_parts = []
         for p in parts:
             if isinstance(p, Value):
-                regex_parts.append(re_escape(p.canonical()))
+                regex_parts.append(re_escape(p.canonical())) # Buena práctica escapar
             elif isinstance(p, AnyOne):
                 regex_parts.append(r"\d+")
             elif isinstance(p, Star):
+                # CORRECCIÓN: Usar .* para permitir que el join maneje los separadores
+                # y no exigir comas dobles.
                 regex_parts.append(r".*")
-            elif isinstance(p, Or):
-                # ✅ SOLUCIÓN: Extraer los valores del OR y unirlos en un grupo Regex (?:A|B|C)
-                or_vals = [re_escape(v.canonical()) for v in p.items if isinstance(v, Value)]
-                regex_parts.append(f"(?:{'|'.join(or_vals)})")
 
         regex = "^" + separator.join(regex_parts) + "$"
+        
         return np.asarray(values.str.match(regex, na=False), dtype=bool)
 
     # -------------------------
     # HAS {}
     # -------------------------
     if isinstance(expr, Has):
-        # ✅ SOLUCIÓN: Si el 'Has' contiene un 'Or' (ej: {@Alias}), delegamos recursivamente
-        # Has(A | B) es lógicamente equivalente a Has(A) | Has(B)
-        if isinstance(expr.expr, Or):
-            masks = [evaluate_expr(Has(e), values, separator) for e in expr.expr.items]
-            return np.logical_or.reduce(masks)
-        else:
-            val = expr.expr.canonical()
-            # Regex para "contiene valor exacto": al principio, en medio o al final
-            pattern = rf"(?:^|{separator}){val}(?:{separator}|$)"
-            return np.asarray(values.str.contains(pattern, regex=True, na=False), dtype=bool)
+        val = expr.expr.canonical()
+        # Regex para "contiene valor exacto": al principio, en medio o al final
+        pattern = rf"(?:^|{separator}){val}(?:{separator}|$)"
+        return np.asarray(values.str.contains(pattern, regex=True, na=False), dtype=bool)
 
     # -------------------------
     # LÓGICOS

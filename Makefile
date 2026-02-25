@@ -107,11 +107,14 @@ api_data: w_waste
       -H "accept: application/json" | jq . > waste/queries/query_$(QUERY_ID)_data_offset$(OFFSET)_limit$(LIMIT).json·
 
 
-QUERY_ID-d:= "762592333e1d"
+QUERY_ID-d:= "3959025d838f"
 api_get-d:
 	@echo "🔍 Obteniendo metadata de query con ID por defecto..."
 	@make api_get QUERY_ID="$(QUERY_ID-d)"
 
+api_data-d:
+	@echo "🔍 Obteniendo datos de query con ID por defecto y paginación por defecto..."
+	@make api_data QUERY_ID="$(QUERY_ID-d)" OFFSET=0 LIMIT=10
 
 # GET /events - Obtener diccionario de eventos
 api_events: w_waste
