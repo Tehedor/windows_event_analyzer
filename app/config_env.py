@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     METADATA_NAME: str = "03_preparewindowsds_metadata.json"
 
     DICTIONARY_NAME: str = "02_prepareeventsds_event_catalog.json"
-
+    DATASET_RAM_TIMEOUT: int = 10
 
     # --- PROCESSED CONFIG ---
     # Ruta base para guardar los procesados. 

@@ -22,6 +22,7 @@ services:
       OBS_EVENTS_COLUMN: "OW_events"
       PRED_EVENTS_COLUMN: "PW_events"
       DATASET_PROCESSED_PATH: "/app/epoch_processed"
+      DATASET_RAM_TIMEOUT: "10"
     command: uvicorn main:app --host 0.0.0.0 --port 8050 --reload
     
     # LIMITACIÓN DE RECURSOS

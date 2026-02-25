@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any
+import threading
+import gc
 
 from core._1_config_loader import load_config
 from core._2_preprocessor import load_or_preprocess_dataset
@@ -57,6 +59,10 @@ class QueryService:
         self._df = None
         self._event_dict = None
 
+        # timer
+        self._ram_timeout = self.config.get("ram_timeout", 0)
+        self._timer: Optional[threading.Timer] = None
+
         self._component_dict = build_component_dictionary(self.config)
         self._component_dict_compact = build_component_dictionary_compact(self.config)
 
@@ -70,13 +76,13 @@ class QueryService:
     # -------------------------------------------------------
     # Public API usada por routes.py
     # -------------------------------------------------------
-
     def create_query(self, src: Optional[str], dst: Optional[str]) -> str:
         query_id = _make_query_id(src, dst)
 
-        # Si ya existe y está DONE → no recalculamos
         entry = self.registry.get(query_id)
-        if entry and entry.status == QueryStatus.DONE:
+        
+        # 🚀 PROTECCIÓN: Si ya existe y está DONE o RUNNING → no hacemos NADA, devolvemos el ID
+        if entry and entry.status in (QueryStatus.DONE, QueryStatus.RUNNING):
             return query_id
 
         self.registry.create(
@@ -90,7 +96,6 @@ class QueryService:
         self.registry.update(query_id, status=QueryStatus.RUNNING)
 
         return query_id
-
 
     def execute_query(self, query_id: str) -> None:
 
@@ -199,4 +204,27 @@ class QueryService:
         if self._df is None:
             print("📦 Cargando dataset en memoria...")
             self._df = load_or_preprocess_dataset(self.config)
+        self._reset_timer()
         return self._df
+    
+
+
+    def _reset_timer(self):
+        """Reinicia el contador para liberar la RAM. Si es <= 0, es infinito."""
+        if self._ram_timeout <= 0:
+            return  # Configurado como indefinido, no hacemos nada
+
+        # Si ya había un temporizador corriendo, lo cancelamos
+        if self._timer is not None:
+            self._timer.cancel()
+
+        # Creamos y lanzamos uno nuevo
+        self._timer = threading.Timer(self._ram_timeout, self._clear_dataset)
+        self._timer.start()
+
+    def _clear_dataset(self):
+        """Libera el dataset de la RAM tras un periodo de inactividad."""
+        if self._df is not None:
+            print(f"🧹 Tiempo de inactividad superado ({self._ram_timeout}s). Liberando dataset de la RAM...")
+            self._df = None
+            gc.collect()  # Forzamos la recolección de basura para limpiar la memoria inmediatamente

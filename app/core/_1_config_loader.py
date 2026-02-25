@@ -215,6 +215,7 @@ def _config_env_to_dict(settings_dict: Dict[str, Any]) -> Dict[str, Any]:
     config_env: Dict[str, Any] = {
         "paths": {k: v for k, v in {**paths, **filenames}.items() if v is not None},
         "columns": columns,
+        "ram_timeout": get_val("DATASET_RAM_TIMEOUT", 0),
     }
     
     return config_env

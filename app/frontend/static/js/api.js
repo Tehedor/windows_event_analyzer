@@ -1,7 +1,9 @@
 // app/frontend/static/js/api.js
+
 export const API = {
     async fetchQueries() {
-        const res = await fetch("/queries");
+        // 🚀 AÑADIDO: ?t=... y cache: 'no-store' para evitar que el navegador se quede atascado en 'running'
+        const res = await fetch(`/queries?t=${Date.now()}`, { cache: "no-store" });
         if (!res.ok) throw new Error("Error cargando queries");
         return await res.json();
     },
@@ -17,15 +19,17 @@ export const API = {
     },
 
     async fetchQueryData(queryId, offset = 0, limit = 250) {
+        // 🚀 AÑADIDO: También evitamos la caché al cambiar de página
         const res = await fetch(
-            `/query/${queryId}/data?offset=${offset}&limit=${limit}`
+            `/query/${queryId}/data?offset=${offset}&limit=${limit}&t=${Date.now()}`,
+            { cache: "no-store" }
         );
         if (!res.ok) throw new Error("Error cargando datos");
         return await res.json();
     },
 
     async fetchComponentDict() {
-        const res = await fetch("/componentDict");
+        const res = await fetch("/componentDict", { cache: "no-store" });
         if (!res.ok) throw new Error("Error cargando diccionario de componentes");
         return await res.json();
     }

@@ -10,6 +10,7 @@ import pandas as pd
 from core._3_input_controller import QueryPattern
 
 OUTPUT_MODES = ["parquet", "csv"]
+MAX_CSV_ROWS = 100000
 
 def save_results(
     df: pd.DataFrame,
@@ -42,10 +43,8 @@ def save_results(
 
     # Obtenemos el nombre base sin extensión
     base_filename = _build_filename(src_pattern, dst_pattern)
-    
     generated_paths = []
 
-    # Iteramos sobre los modos configurados
     for mode in OUTPUT_MODES:
         if mode == "parquet":
             file_path = output_dir / f"{base_filename}.parquet"
@@ -54,11 +53,14 @@ def save_results(
             generated_paths.append(file_path)
             
         elif mode == "csv":
-            file_path = output_dir_csv / f"{base_filename}.csv"
-            # index=False suele ser preferible para no guardar el índice numérico en el CSV
-            df.to_csv(file_path, index=False, encoding='utf-8') 
-            os.chmod(file_path, 0o666)
-            generated_paths.append(file_path)
+            # 🚀 PROTECCIÓN: Si el resultado es muy grande, nos saltamos el CSV
+            if len(df) <= MAX_CSV_ROWS:
+                file_path = output_dir_csv / f"{base_filename}.csv"
+                df.to_csv(file_path, index=False, encoding='utf-8') 
+                os.chmod(file_path, 0o666)
+                generated_paths.append(file_path)
+            else:
+                print(f"⚠️ Resultado demasiado grande ({len(df)} filas). Omitiendo creación de archivo CSV para evitar saturar el servidor.")
 
     return generated_paths
 

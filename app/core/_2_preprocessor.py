@@ -40,12 +40,12 @@ def load_or_preprocess_dataset(config: Dict[str, Any]) -> pd.DataFrame:
 # -------------------------------------------------------------------------
 # Carga de datasets
 # -------------------------------------------------------------------------
-
 def _load_processed_dataset(path: Path) -> pd.DataFrame:
     """
     Carga el dataset ya procesado.
+    🚀 OPTIMIZADO: Usa memory mapping para no colapsar la RAM y cargar casi al instante.
     """
-    return pd.read_parquet(path)
+    return pd.read_parquet(path, engine="pyarrow", memory_map=True)
 
 
 def _load_raw_dataset(path: Path) -> pd.DataFrame:
@@ -55,8 +55,8 @@ def _load_raw_dataset(path: Path) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"Dataset raw no encontrado: {path}")
 
-    return pd.read_parquet(path)
-
+    # 🚀 OPTIMIZADO: También lo aplicamos aquí por si el raw es masivo.
+    return pd.read_parquet(path, engine="pyarrow", memory_map=True)
 
 # -------------------------------------------------------------------------
 # Preprocesamiento
@@ -93,10 +93,11 @@ def _normalize_events(value):
 
     raise ValueError(f"Formato de eventos no soportado: {value!r} (Tipo: {type(value)})")
 
-
 def _preprocess_dataframe(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:
     print("Iniciando preprocesamiento del dataset...")
-    df = df.copy()
+    
+    # ❌ ELIMINADO: df = df.copy() 
+    # Quitamos la copia para ahorrar RAM. Modificaremos el DataFrame cargado in-place.
 
     separator = config["processing"]["separator"]
 
@@ -133,7 +134,6 @@ def _preprocess_dataframe(df: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFr
     df = df.set_index([obs_index_col, pred_index_col])
 
     save_debug_info(df.head(10), filename="preprocessed_dataset_sample.json", head="Sample of Preprocessed Dataset")
-    # logger.info(f"Dataset preprocesado con éxito. Número de filas: {len(df)}")
     print(f"Dataset preprocesado con éxito. Número de filas: {len(df)}")
 
     return df

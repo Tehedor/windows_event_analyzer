@@ -179,3 +179,20 @@ clean_processed:
 
 clean: clean_queries clean_processed
 	@echo "🧹 Limpieza completa de archivos de queries y procesados."
+
+
+# Tools
+core_content:
+	@cat app/core/*.py > a
+	@cat app/services/queries_service.py >> a
+	@cat app/api/*.py >> a
+	@cat app/main.py >> a
+	@cat app/config_env.py >> a
+	@code a
+
+fronted_content:
+	@cat app/frontend/templates/*.html > f
+	@cat app/frontend/static/js/*.js >> f
+	@cat app/frontend/static/css/*.css >> f
+	@code f
+	

@@ -118,8 +118,7 @@ async def get_query_data(
     # --------------------------------------------------
 
     def _process_data() -> Dict[str, Any]:
-
-        df = pd.read_parquet(parquet_path)
+        df = pd.read_parquet(parquet_path, engine="pyarrow", memory_map=True)
         total = len(df)
 
         df_slice = df.iloc[offset: offset + limit]
