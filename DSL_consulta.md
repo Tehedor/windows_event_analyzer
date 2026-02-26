@@ -1,388 +1,48 @@
-Tipos de consulta
-## Consultas Lógicas
-### Nivel 0 -> Concatenación secuencial `,`
-El operador `,` representa concatenación ordenada de elementos o expresiones.
-```python
-src = "475,511"
-# Coincide únicamente con la secuencia exacta [475,511]
+### Tabla de Tipos de Inputs y Operadores
 
-src = "(475 | 511),452"
-# Coincide con:
-# 475,452
-# 511,452
-```
-
-### Nivel 1 -> Atómicas
-#### Comodín único `?` 
-Representa **exactamente un elemento** en una posición concreta.
-```python
-src = "475,?,511"
-# Coincide con:
-# 475,123,511
-# 475,999,511
-# NO coincide con:
-# 475,511
-# 475,12,13,511       
-```
-
-
-#### Comodín de grupo `*`
-Representa **una secuencia de longitud variable** (≥ 0).
-```python
-src = "475,*,511"
-# Coincide con:
-# 475,511
-# 475,12,511
-# 475,12,13,14,511
-```
-
-```python
-src = "475,*"
-# Coincide con cualquier secuencia que EMPIECE por 475
-# 475
-# 475,12
-# 475,12,13,...
-```
-
-
-### Nivel 2 -> Grupo
-Permiten **composición semántica**, sin añadir nuevos inputs al frontend.
-#### Grupo Lógico `()`
-Agrupan expresiones para controlar la evaluación lógica.
-``` python
-src = "(475,* | 511,*) & ?,612"
-# Coincide con secuencias que:
-# - empiecen por 475 O por 511
-# - Y además terminen en 612
-```
-Los paréntesis no alteran el patrón, solo la lógica
-
-#### Pertenencia `{}`
-Comprueba si una secuencia contiene uno o más elementos independientemente de la posición.
-```python
-src = "{511}"
-# Coincide con cualquier secuencia que CONTENGA el valor 511
-# Ej:
-# 511
-# 475,511
-# 475,12,511,14
-```
-
-```python
-src = "{12 | 13}"
-# Coincide con secuencias que contengan 12 O 13
-```
-
-```python
-src = "475,* & {511}"
-# Empieza por 475
-# Y en algún punto contiene el valor 511
-
-```
-
-> `{}` **no define orden**, solo pertenencia.
-> `{}` no puede usarse como elemento secuencial directo.
-> Solo es válido dentro de expresiones lógicas (`&`, `|`, `!`).
-
-### Nivel 3 -> Lógicas
-Los operadores lógicos **siempre actúan entre expresiones completas**  
-(no entre números individuales).
-#### 1. OR lógico `|`
-Une resultados de varias expresiones.
-- **OR atómico**
-```python
-src = "(484 | 511)"
-# Coincide con:
-# [484]
-# [511]
-```
-- **OR de patrones completos**
-```python
-src = "475,484,* | 511,612,*"
-# Coincide con:
-# - secuencias que empiezan por 475,484
-# - O secuencias que empiezan por 511,612
-```
-- **OR mixto**
-```python
-src = "(475,484,* | 511),452"
-# Coincide con:
-# 475,484,...,452
-# 511,452
-```
-
-
-
-
-#### 2. AND lógico `&`
-Aplica **múltiples restricciones simultáneas** sobre la misma secuencia.
-
-- **AND de patrones**
-```python
-src = "475,484,* & *,511"
-# Coincide con secuencias que:
-# - empiezan por 475,484
-# - Y terminan en 511
-           # Empiece por 475, 484 y termine por 511
-```
-
-- **AND con pertenencia**
-```python
-src = "475,484,* & {511}"
-# Coincide con secuencias que:
-# - empiezan por 475,484
-# - Y contienen el valor 511 en cualquier posición
-```
-> El AND **reduce** el conjunto de resultados.
-
-#### 3. Negación  `!`
- Excluye patrones o condiciones.
--  **Negación atómica posicional**
-```python
-src = "!13,14"
-# Secuencias donde:
-# - el primer elemento NO es 13
-# - el segundo elemento ES 14
-
-```
-
-```python
-src = "!13,*"
-# Secuencia cuyo PRIMER elemento no es 13
-# [13,*]
-```
-
-- **Negación de patrón**
-```python
-src = "!(475,484,*)"
-# Coincide con todas las secuencias
-# EXCEPTO las que empiezan por 475,484
-```
-- **Negación combinada**
-```python
-src = "475,* & !{511}"
-# Empieza por 475
-# Y NO contiene el valor 511
-```
-
-
-## Consultas de componente. Alias semánticos
-Componentes Actuales:
-```yml
-# Datasets/Dataset_ventanas/components.yml
-components:
-  Battery_Active_Power:
-    color: "#FF0000"
-    description: "Battery active power"
-  Battery_Active_Power_Set_Response:
-    color: "#CC0000"
-    description: "Battery active power set response"
-  PVPCS_Active_Power:
-    color: "#00FF00"
-    description: "PVPCS active power"
-  GE_Body_Active_Power:
-    color: "#0000FF"
-    description: "GE Body active power"
-    metrics:
-  GE_Active_Power:
-    color: "#FFA500"
-    description: "GE active power"
-  GE_Body_Active_Power_Set_Response:
-    color: "#FF8C00"
-    description: "GE Body active power set response"
-  FC_Active_Power_FC_END_Set:
-    color: "#800080"
-    description: "FC END set active power"
-  FC_Active_Power:
-    color: "#9932CC"
-    description: "FC active power"
-  FC_Active_Power_FC_end_Set_Response:
-    color: "#BA55D3"
-    description: "FC end set response active power"
-  Island_mode_MCCB_Active_Power:
-    color: "#008080"
-    description: "Island mode MCCB active power"
-  MG-LV-MSB_AC_Voltage:
-    color: "#A52A2A"
-    description: "MG-LV-MSB AC voltage"
-  Receiving_Point_AC_Voltage:
-    color: "#2F4F4F"
-    description: "Receiving Point AC voltage"
-  Island_mode_MCCB_AC_Voltage:
-    color: "#556B2F"
-    description: "Island mode MCCB AC voltage"
-  Island_mode_MCCB_Frequency:
-    color: "#4682B4"
-    description: "Island mode MCCB frequency"
-  MG-LV-MSB_Frequency:
-    color: "#B22222"
-    description: "MG-LV-MSB frequency"
-  Inlet_Temperature_of_Chilled_Water:
-    color: "#FF1493"
-    description: "Inlet temperature of chilled water"
-  Outlet_Temperature:
-    color: "#1E90FF"
-    description: "Outlet temperature"
-```
-
-```python
-src = `"@Outlet_Temperature | @MG-LV-MSB_Frequency"
-```
-Donde estos dos estarían compuesto estos elementos (no real)
-``` yml
-MG-LV-MSB_Frequency:
-  - 475
-  - 612
-Outlet_Temperature:
-  - 511
-```
-
-Equivale a:
-```python
-(475 | 612) | (511)
-```
-
+| Categoría | Sintaxis / Operador | Descripción |
+| --- | --- | --- |
+| **Coincidencia Exacta** | `Valor` o `V1, V2` | Busca un evento único (`475`) o una secuencia estricta (`475,511`). |
+| **Comodín Múltiple** | `*` | Representa cero, uno o múltiples eventos (ej. `475,*` empieza por 475). |
+| **Comodín Único** | `?` | Representa exactamente **un** evento cualquiera (ej. `475,?,511`). |
+| **Pertenencia (Contiene)** | `{Valor}` | Obliga a que la secuencia contenga el evento en cualquier posición. |
+| **Negación (NO Contiene)** | `!{Valor}` | Excluye secuencias que contengan el evento. |
+| **Lógica Booleana** | ` | `(OR) ,`&` (AND) |
+| **Agrupación** | `(...)` | Agrupa secuencias lógicas para aislar condiciones (ej. `({A} |
+| **Alias de Componente** | `@NombreAlias` | Llama a variables configuradas previamente (ej. `@Outlet_Temperature`). |
+| **Entornos** | `src:` y `dst:` | `src` aplica al origen/observación. `dst` aplica a la predicción/destino. El valor `null` ignora el campo. |
 
 ---
 
-# Normalización Nombre Output file.
-## Nivel 0
-### Numérico
-```python
-475           → 475
-```
-Ej:
-``` python
-src = "475"
-→ src_475
-```
+### Ejemplos Prácticos de Uso
 
-### Concatenación Secuencial `,`
-```python
-, → -
-```
-Ej:
-``` python
-src = "475,484,511"
-→ src_475-484-511
-```
+**1. Búsquedas Secuenciales y Patrones**
 
+* **Empieza por:** `src: "475,*"` (Empieza en 475, sigue cualquier cosa).
+* **Termina en:** `src: "*,511"` (Cualquier cosa antes, termina en 511).
+* **Patrón con salto temporal:** `src: "49, ?, 148,*"` (Empieza en 49, un evento X, luego 148 y cualquier cosa).
 
+**2. Búsquedas por Pertenencia y Negación**
 
-## Nivel 1 Patrones atómicos
-### Comodín único `?`
-``` python
-? → any
-```
-Ej:
-```python
-src = "475,?,511"
-→ src_475-any-511
-```
+* **Contiene 511:** `src: "{511}"`
+* **NO contiene 511:** `src: "!{511}"`
+* **Interacción compleja AND + Negación:** `dst: "{143} & !{24}"` (Debe contener 143 y NO contener 24).
 
-### Comodín de grupo `*`
-``` python
-* → star
-```
-Ej:
-``` python
-src = "475,*"
-→ src_475-star
-```
+**3. Lógica Booleana y Agrupaciones**
+
+* **OR Secuencial:** `src: "(49,143, 148,*) | (143,148,143,*)"` (Cumple la secuencia A o la secuencia B).
+* **AND con subgrupos:** `src: "(49,143, 148,*) & ({49} | !{13})"` (Cumple la secuencia Y ADEMÁS debe contener 49 o no contener 13).
+
+**4. Uso de Alias**
+
+* **Alias directo:** `src: "@Outlet_Temperature"`
+* **Alias con comodines e inserción:** `src: "*,(@Outlet_Temperature | @Battery_Active_Power),*"` (Contiene uno de los dos alias en algún punto de la secuencia).
+
+**5. Interacción Origen (SRC) vs Destino (DST)**
+
+* **Filtro mixto:** * `src: "475,*"` (El origen empieza por 475).
+* `dst: "{511}"` (Y el destino asociado debe contener 511).
 
 
-## Nivel 2 Grupo
-### Grupo Lógico `()`
-Los paréntesis `()` no se representan en los nombres de fichero.
-
->Durante la normalización:
->- Las expresiones se reducen a su forma lógica equivalente.
->- Los operadores `or`, `and`, `not` reflejan completamente la semántica.
->- El nombre final es independiente del árbol de agrupación original.
-
-
-
-### Pertenencia `{}`
-No importa el orden, solo que esté
-
-```python
-{X} → has-X
-```
-
-- Pertenencia Simple
-```python
-src = "{511}"
-→ src_has-511
-```
-
-- Pertenencia OR
-```python
-src = "{12 | 13}"
-→ src_has-12-or-13
-```
-
-## Nivel 3 Lógicas
-### OR lógico `|`
-
-
-``` python
-| → or
-```
-
-```python
-src = "475 | 511"
-→ src_475-or-511
-```
-
-### AND lógico `&`
-``` python
-& → and
-```
-
-```python
-src = "475,484,* & *,511"
-→ src_475-484-star-and-star-511
-```
-
-
-
-### Negación `!`
-
-```python
-! → not
-```
-
-1. Negación de patrón
-```python
-src = "!(475,484,*)"
-```
-
-```python
-src_not-475-484-star
-```
-
-
-2. Negación combinada
-```python
-src = "475,* & !{511}"
-src_475-star-and-not-has-511
-```
-
-
-
-
-## Alias semánticos
-Los alias No deben aparecer en el filename final, siempre se expanden a su forma numérica
-
-```yaml
-Outlet_Temperature → 511
-MG-LV-MSB_Frequency → 475 | 612
-```
-
-
-
-```python
-src = "@Outlet_Temperature | @MG-LV-MSB_Frequency"
-→ src_511-or-475-or-612
-```
-
+* **Solo buscar por destino:** * `src: null`
+* `dst: "*,612"` (Trae todas las secuencias cuyo destino termine en 612).
