@@ -68,6 +68,8 @@ def _apply_pattern(
 # -------------------------------------------------------------------------
 # Evaluación semántica del AST
 # -------------------------------------------------------------------------
+# app/core/_4_query_engine.py
+
 def evaluate_expr(expr: Expr, values: pd.Index, separator: str) -> np.ndarray:
     """
     values: pd.Index
@@ -106,32 +108,64 @@ def evaluate_expr(expr: Expr, values: pd.Index, separator: str) -> np.ndarray:
             elif isinstance(p, AnyOne):
                 regex_parts.append(r"\d+")
             elif isinstance(p, Star):
+                # 🚀 SOLUCIÓN: El asterisco debe hacer match con CUALQUIER cosa (incluyendo separadores)
+                # o con NADA. Usamos .* para permitir esto en la construcción final.
                 regex_parts.append(r".*")
             elif isinstance(p, Or):
-                # ✅ SOLUCIÓN: Extraer los valores del OR y unirlos en un grupo Regex (?:A|B|C)
-                or_vals = [re_escape(v.canonical()) for v in p.items if isinstance(v, Value)]
-                regex_parts.append(f"(?:{'|'.join(or_vals)})")
+                or_vals = []
+                def extract_or_values(or_node):
+                    for item in or_node.items:
+                        if isinstance(item, Value):
+                            or_vals.append(item.canonical())
+                        elif isinstance(item, Or):
+                            extract_or_values(item)
+                extract_or_values(p)
+                
+                if or_vals:
+                    escaped_vals = [re_escape(v) for v in or_vals]
+                    # No necesitamos los separadores ^|$ aquí, porque el join() de abajo se encargará de ellos
+                    # en el contexto de la secuencia completa.
+                    or_group = f"(?:{'|'.join(escaped_vals)})"
+                    regex_parts.append(or_group)
+                else:
+                    regex_parts.append(r"(?!x)x")
 
-        regex = "^" + separator.join(regex_parts) + "$"
+        # 🚀 SOLUCIÓN DEFINITIVA PARA LA UNIÓN DE REGEX:
+        # En lugar de intentar adivinar dónde poner los separadores opcionales, 
+        # dejamos que Python haga un join() normal, pero lidiamos con el caso especial
+        # donde un '.*' queda pegado a un separador (ej: '.*,49').
+        #
+        # Al hacer separator.join(regex_parts), si tenemos [".*", "49", ".*"], 
+        # el resultado será ".*,49,.*". 
+        # Como ".*" ya se come todo, exigir una coma exacta choca.
+        # Lo que necesitamos es que si hay un '.*', los separadores adyacentes sean opcionales.
+        
+        raw_regex = separator.join(regex_parts)
+        
+        # Reemplazamos los separadores literales pegados a '.*' para que sean opcionales
+        safe_sep = re_escape(separator)
+        # Permite '.*,' o '.*'
+        raw_regex = raw_regex.replace(f".*{safe_sep}", f".*(?:{safe_sep})?")
+        # Permite ',.*' o '.*'
+        raw_regex = raw_regex.replace(f"{safe_sep}.*", f"(?:{safe_sep})?.*")
+
+        regex = f"^{raw_regex}$"
         return np.asarray(values.str.match(regex, na=False), dtype=bool)
 
     # -------------------------
     # HAS {}
     # -------------------------
     if isinstance(expr, Has):
-        # ✅ SOLUCIÓN: Si el 'Has' contiene un 'Or' (ej: {@Alias}), delegamos recursivamente
-        # Has(A | B) es lógicamente equivalente a Has(A) | Has(B)
         if isinstance(expr.expr, Or):
             masks = [evaluate_expr(Has(e), values, separator) for e in expr.expr.items]
             return np.logical_or.reduce(masks)
         else:
             val = expr.expr.canonical()
-            # Regex para "contiene valor exacto": al principio, en medio o al final
             pattern = rf"(?:^|{separator}){val}(?:{separator}|$)"
             return np.asarray(values.str.contains(pattern, regex=True, na=False), dtype=bool)
 
     # -------------------------
-    # LÓGICOS
+    # LÓGICOS (Nivel superior)
     # -------------------------
     if isinstance(expr, Or):
         masks = [evaluate_expr(e, values, separator) for e in expr.items]

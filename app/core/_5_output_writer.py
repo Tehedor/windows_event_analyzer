@@ -6,6 +6,7 @@ import re
 import os
 
 import pandas as pd
+import hashlib 
 
 from core._3_input_controller import QueryPattern
 
@@ -68,7 +69,6 @@ def save_results(
 # -------------------------------------------------------------------------
 # Construcción del nombre de fichero
 # -------------------------------------------------------------------------
-
 def _build_filename(
     src_pattern: Optional[QueryPattern],
     dst_pattern: Optional[QueryPattern]
@@ -76,6 +76,8 @@ def _build_filename(
     """
     Construye un nombre de fichero base legible y estable.
     NO incluye la extensión del archivo.
+    Si el nombre es demasiado largo para el sistema de archivos, 
+    lo recorta y añade un hash para garantizar unicidad.
     """
 
     parts = []
@@ -86,14 +88,19 @@ def _build_filename(
     if dst_pattern:
         parts.append(f"dst_{_sanitize(dst_pattern.raw)}")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
     name = "__".join(parts) if parts else "query"
     
-    # Hemos quitado el .parquet aquí para añadirlo dinámicamente arriba
-    return name 
-    # return f"{name}__{timestamp}" # Descomentar si quieres timestamp
+    # Límite seguro para sistemas de archivos (ext4/NTFS permiten 255 chars)
+    # Dejamos margen para la ruta y la extensión (.parquet / .csv)
+    MAX_NAME_LENGTH = 180 
 
+    if len(name) > MAX_NAME_LENGTH:
+        # Generar un hash único de la string original completa
+        hash_suffix = hashlib.md5(name.encode('utf-8')).hexdigest()[:8]
+        # Cortar el nombre y pegar el hash
+        name = name[:MAX_NAME_LENGTH - 10] + "_" + hash_suffix
+
+    return name
 
 # def _sanitize(value: str) -> str:
 #     """

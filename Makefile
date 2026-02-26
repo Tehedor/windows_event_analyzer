@@ -66,10 +66,7 @@ test_4:
 .PHONY: api_queries
 # Realiza múltiples consultas a la API REST a paritr del file app/scripts/multi_requests.py
 api_queries:
-# 	@docker exec -it ${CONTAINER_NAME} ls
-# 	@docker exec -it ${CONTAINER_NAME} pwd
-
-	@docker exec -it ${CONTAINER_NAME} python -m scripts.multi_requests
+	@docker exec -it ${CONTAINER_NAME} env PREVIEW_LIMIT=20 python -m scripts.multi_requests
 # 	@$(PYTHON) -m files_output.multi_requests_file
 # 	@cd app && \
 # 	$(PYTHON) -m files_output.multi_requests_file
