@@ -16,14 +16,15 @@ async function loadEventDictionary() {
     return EVENT_DICT;
 }
 
-// app/frontend/static/js/visualizer.js
 export async function renderVisualization(query) {
     const container = document.getElementById("visualization-content");
     container.innerHTML = "";
+    
     if (!query) {
         showVisualizationPlaceholder();
         return;
     }
+    
     showVisualizationContent();
 
     // Resetear paginación al cambiar de consulta
@@ -34,12 +35,11 @@ export async function renderVisualization(query) {
     await loadPage(query, 0); // Cargamos la página 0 (inicial)
 }
 
-// 🔥 NUEVO: Función para moverse entre páginas
 export async function loadPage(query, direction = 0) {
     if (state.pagination.loading) return;
     state.pagination.loading = true;
 
-    // direction: 1 (siguiente), -1 (anterior), 0 (actual/reset)
+    // direction: 1 (siguiente), -1 (anterior), 0 (actual/reset sin mover página)
     state.pagination.offset += (direction * state.pagination.limit);
     if (state.pagination.offset < 0) state.pagination.offset = 0;
 
@@ -48,13 +48,13 @@ export async function loadPage(query, direction = 0) {
  
     state.pagination.total = data.total;
 
-    renderWindows(data.rows, offset);
+    await renderWindows(data.rows, offset);
 
     state.pagination.loading = false;
     updatePaginationControls(); // Actualizamos los botones
 }
 
-// 🔥 OPTIMIZADO// 🔥 MÁXIMA OPTIMIZACIÓN: Renderizado por Strings HTML
+// 🔥 MÁXIMA OPTIMIZACIÓN: Renderizado por Strings HTML
 async function renderWindows(rows, currentOffset) {
     const container = document.getElementById("visualization-content");
     const eventDict = await loadEventDictionary();
@@ -67,34 +67,29 @@ async function renderWindows(rows, currentOffset) {
         return;
     }
 
-    // Usaremos un Array para ir apilando todo el HTML como texto (muchísimo más rápido que createElement)
+    // Usaremos un Array para ir apilando todo el HTML como texto
     let htmlChunks = [];
 
     rows.forEach((row, i) => {
         const idx = currentOffset + i;
         
-        // Abrimos la ventana
         let windowHtml = `<div class="window">`;
-        
-        // Etiqueta
         windowHtml += `<div class="window-label">${idx + 1}</div>`;
         
-        // Bloque Observación
-        windowHtml += createEventsBlockHTML(row.obs_events || [], eventDict, isCompact);
-        
-        // Separador
+        // Soportar ambas nomenclaturas (obs_events o observation_events)
+        const obs = row.obs_events || row.observation_events || [];
+        const pred = row.pred_events || row.prediction_events || [];
+
+        windowHtml += createEventsBlockHTML(obs, eventDict, isCompact);
         windowHtml += `<div class="window-separator"></div>`;
+        windowHtml += createEventsBlockHTML(pred, eventDict, isCompact);
         
-        // Bloque Predicción
-        windowHtml += createEventsBlockHTML(row.pred_events || [], eventDict, isCompact);
-        
-        // Cerramos la ventana
         windowHtml += `</div>`;
         
         htmlChunks.push(windowHtml);
     });
 
-    // Inyectamos todo el texto HTML de un solo golpe en el DOM (Renderizado instantáneo)
+    // Inyectamos todo el texto HTML de un solo golpe en el DOM
     container.innerHTML = htmlChunks.join('');
     
     // Subir el scroll arriba del todo automáticamente al cambiar de página
@@ -111,17 +106,18 @@ function createEventsBlockHTML(events, dict, isCompact) {
         const ev = dict[id];
 
         if (ev) {
-            const p1 = ev.percentile_origin.replace("Q", "");
-            const p2 = ev.percentile_target.replace("Q", "");
+            // Manejar variables si existen, sino en blanco
+            const p1 = ev.percentile_origin ? ev.percentile_origin.replace("Q", "") : "";
+            const p2 = ev.percentile_target ? ev.percentile_target.replace("Q", "") : "";
             
-            // Usamos comillas simples en los atributos HTML para evitar conflictos
             const tooltip = `${ev.event_name}&#10;ID: ${ev.event_id}`;
+            const bgColor = ev.base_color || ev.final_color || "#d1d5db";
 
             if (isCompact) {
-                html += `<div class="event-block compact" style="background-color: ${ev.base_color}; color: #fff;" title="${tooltip}">${ev.event_id}</div>`;
+                html += `<div class="event-block compact" style="background-color: ${bgColor}; color: #fff;" title="${tooltip}">${ev.event_id}</div>`;
             } else {
                 html += `
-                    <div class="event-block compact" style="background-color: ${ev.base_color}; color: #fff;" title="${tooltip}">
+                    <div class="event-block compact" style="background-color: ${bgColor}; color: #fff;" title="${tooltip}">
                         <div class="mini-grid">
                             <div class="col-id">${ev.event_id}</div>
                             <div class="col-sep">|</div>
@@ -141,12 +137,10 @@ function createEventsBlockHTML(events, dict, isCompact) {
     return html;
 }
 
-
-// 🔥 NUEVO: Controles de paginación estilo Google (< Anterior | Siguiente >)
+// 🔥 Controles de paginación CON INPUT INCLUIDO
 function updatePaginationControls() {
     let paginationBox = document.getElementById("pagination-controls");
     
-    // Si no existe, lo creamos y lo pegamos debajo del contenedor de visualización
     if (!paginationBox) {
         paginationBox = document.createElement("div");
         paginationBox.id = "pagination-controls";
@@ -157,17 +151,21 @@ function updatePaginationControls() {
     const currentPage = Math.floor(offset / limit) + 1;
     const totalPages = Math.ceil(total / limit) || 1;
 
-    // Generar HTML de los botones
+    // Generar HTML de los botones con el input type="number"
     paginationBox.innerHTML = `
         <button id="btn-prev-page" class="pag-btn" ${currentPage === 1 ? 'disabled' : ''}>◀ Anterior</button>
-        <span class="page-info">Página <b>${currentPage}</b> de ${totalPages} <span style="color:#6b7280; font-size:11px;">(${total} ventanas)</span></span>
+        <span class="page-info">
+            Página <input type="number" id="page-input" class="page-input-style" value="${currentPage}" min="1" max="${totalPages}"> de ${totalPages} 
+            <span style="color:#6b7280; font-size:11px;">(${total} ventanas)</span>
+        </span>
         <button id="btn-next-page" class="pag-btn" ${currentPage >= totalPages ? 'disabled' : ''}>Siguiente ▶</button>
     `;
 
-    // Asignar eventos (usamos setTimeout para asegurar que el HTML se haya insertado)
+    // Asignar eventos
     setTimeout(() => {
         const btnPrev = document.getElementById("btn-prev-page");
         const btnNext = document.getElementById("btn-next-page");
+        const pageInput = document.getElementById("page-input");
 
         if(btnPrev) {
             btnPrev.onclick = () => {
@@ -181,10 +179,24 @@ function updatePaginationControls() {
                 loadPage(q, 1);
             };
         }
+        
+        // Evento para cambiar de página tipeando el número
+        if(pageInput) {
+            pageInput.addEventListener("change", (e) => {
+                let newPage = parseInt(e.target.value);
+                
+                // Validaciones por si el usuario pone letras o números locos
+                if (isNaN(newPage) || newPage < 1) newPage = 1;
+                if (newPage > totalPages) newPage = totalPages;
+                
+                state.pagination.offset = (newPage - 1) * state.pagination.limit;
+                
+                const q = state.queries.find(q => q.query_id === state.selectedQueryId);
+                loadPage(q, 0); 
+            });
+        }
     }, 0);
 }
-
-
 
 export function enableDragScroll() {
     const container = document.getElementById("visualization-container");

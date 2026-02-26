@@ -6,8 +6,9 @@ import {
     selectQuery,
     showVisualizationPlaceholder
 } from "./ui.js";
-import { enableDragScroll } from "./visualizer.js";
+import { enableDragScroll, loadPage } from "./visualizer.js"; // 🔥 loadPage importado aquí
 import { initDictionary } from "./dictionary.js";
+
 document.addEventListener("DOMContentLoaded", initApp);
 
 async function initApp() {
@@ -36,10 +37,10 @@ async function initApp() {
 
         if (state.selectedQueryId) {
             const q = state.queries.find(q => q.query_id === state.selectedQueryId);
-            if (q) selectQuery(q.query_id);
+            // 🔥 AQUÍ: Usamos loadPage(q, 0) para no resetear la paginación
+            if (q) loadPage(q, 0);
         }
     });
-    
     
     setInterval(async () => {
         await loadQueries();
@@ -75,7 +76,6 @@ async function onSubmitQuery(e) {
 
         // 3️⃣ Recargar lista real desde backend
         await loadQueries();
-        // selectQuery(result.query_id);
 
     } catch (err) {
         console.error(err);

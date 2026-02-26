@@ -402,3 +402,22 @@
 
 
 
+/* Estilo para el input de saltar página */
+.page-input-style {
+    width: 45px;
+    text-align: center;
+    font-size: 11px;
+    padding: 2px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    margin: 0 4px;
+    color: #374151;
+    background-color: #f9fafb;
+}
+
+/* Ocultar las flechas del input number por defecto (opcional pero queda más limpio) */
+.page-input-style::-webkit-inner-spin-button, 
+.page-input-style::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}

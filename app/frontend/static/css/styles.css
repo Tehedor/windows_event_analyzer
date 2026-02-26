@@ -473,3 +473,29 @@ html, body {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+
+/* ===================================================== */
+/* AJUSTES DEL FORMULARIO (TÍTULO Y COLAPSADO) */
+/* ===================================================== */
+
+/* 1. Hacer el título de "Nueva consulta" más pequeño */
+.form-header h2 {
+    font-size: 14px;       /* Tamaño más pequeño y equilibrado */
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+/* 2. Ocultar el formulario cuando tiene la clase .collapsed */
+#query-form-container.collapsed #query-form {
+    display: none;
+}
+
+/* 3. Animar y voltear la flechita (▲ a ▼) cuando está colapsado */
+#toggle-form-btn {
+    transition: transform 0.2s ease; /* Animación suave */
+}
+
+#query-form-container.collapsed #toggle-form-btn {
+    transform: rotate(180deg); /* Voltea la flecha hacia abajo */
+}
