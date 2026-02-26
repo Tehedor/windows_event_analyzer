@@ -7,7 +7,7 @@
 | **Comodín Único** | `?` | Representa exactamente **un** evento cualquiera (ej. `475,?,511`). |
 | **Pertenencia (Contiene)** | `{Valor}` | Obliga a que la secuencia contenga el evento en cualquier posición. |
 | **Negación (NO Contiene)** | `!{Valor}` | Excluye secuencias que contengan el evento. |
-| **Lógica Booleana** | ` | `(OR) ,`&` (AND) |
+| **Lógica Booleana** | ` \| `(OR) ,`&` (AND) |
 | **Agrupación** | `(...)` | Agrupa secuencias lógicas para aislar condiciones (ej. `({A} |
 | **Alias de Componente** | `@NombreAlias` | Llama a variables configuradas previamente (ej. `@Outlet_Temperature`). |
 | **Entornos** | `src:` y `dst:` | `src` aplica al origen/observación. `dst` aplica a la predicción/destino. El valor `null` ignora el campo. |
