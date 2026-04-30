@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     # Versión específica a cargar (Variable de entorno clave)
     WINDOW_VERSION: str = "v001"
     # Ruta base donde están las ejecuciones (apunta a la carpeta 03)
-    DATASET_RAW_PATH: str = "executions/03_preparewindowsds"
-    PARQUET_NAME: str = "03_preparewindowsds_dataset.parquet"
+    DATASET_RAW_PATH: str = "executions/f03_windows"
+    PARQUET_NAME: str = "03_windows.parquet"
     METADATA_NAME: str = "03_preparewindowsds_metadata.json"
 
-    DICTIONARY_NAME: str = "02_prepareeventsds_event_catalog.json"
+    DICTIONARY_NAME: str = "03_events_catalog.json"
     DATASET_RAM_TIMEOUT: int = 10
 
     # --- PROCESSED CONFIG ---

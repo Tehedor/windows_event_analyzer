@@ -46,3 +46,4 @@
 
 * **Solo buscar por destino:** * `src: null`
 * `dst: "*,612"` (Trae todas las secuencias cuyo destino termine en 612).
+

@@ -1,6 +1,5 @@
 # core/_1_config_loader.py
 import os
-import json
 import importlib.util
 from pathlib import Path
 from typing import Dict, Any, List, Union
@@ -106,7 +105,7 @@ def _resolve_dynamic_execution_paths(config: Dict[str, Any], project_root: Path,
     
     config["paths"]["dataset_raw"] = str(raw_parquet_path)
 
-    # B. Params (Parent)
+    # B. Params del stage actual (f03)
     params_path = current_variant_path / "params.yaml"
     if not params_path.exists():
         raise FileNotFoundError(f"No se encuentra params.yaml en: {params_path}")
@@ -114,31 +113,45 @@ def _resolve_dynamic_execution_paths(config: Dict[str, Any], project_root: Path,
     with open(params_path, "r", encoding="utf-8") as f:
         params_data = yaml.safe_load(f)
     
-    parent_variant = params_data.get("parent_variant")
-    if not parent_variant:
-        raise ValueError(f"params.yaml en {version} no contiene 'parent_variant'")
+    # Compatibilidad: acepta el parent en raíz o dentro de parameters.parent_variant
+    parent_variant_f02 = params_data.get("parent")
+    if not parent_variant_f02:
+        parent_variant_f02 = params_data.get("parameters", {}).get("parent_variant")
+    if not parent_variant_f02:
+        raise ValueError(
+            f"params.yaml en {version} no contiene 'parent' ni 'parameters.parent_variant'"
+        )
 
-    # C. Diccionario y Metadata
-    executions_root = base_raw_path.parent 
-    path_02 = executions_root / "02_prepareeventsds" / parent_variant
-    
-    dict_name = paths.get("dictionary_name", "02_prepareeventsds_event_catalog.json")
-    dict_path = path_02 / dict_name
+    # C. Diccionario de eventos: se toma directamente desde el stage f03 actual
+    dict_name = paths.get("dictionary_name", "03_events_catalog.json")
+    dict_path = current_variant_path / dict_name
+    if not dict_path.exists():
+        raise FileNotFoundError(
+            f"No se encuentra el catálogo de eventos para {version}.\n"
+            f"Ruta buscada: {dict_path}"
+        )
     config["paths"]["dataset_dicctionary"] = str(dict_path)
 
-    metadata_name = paths.get("metadata_name", "02_prepareeventsds_metadata.json")
-    metadata_path = path_02 / metadata_name
-    found_percentiles = None
-    if metadata_path.exists():
-        with open(metadata_path, "r") as f:
-            meta = json.load(f)
-            if "percentiles" in meta:
-                found_percentiles = meta["percentiles"]
-    
-    if found_percentiles and not config.get("percentiles"):
-        config["percentiles"] = found_percentiles
+    # D. Bands: se extraen de executions/f02_events/<parent_f02>/params.yaml
+    executions_root = base_raw_path.parent
+    f02_params_path = executions_root / "f02_events" / parent_variant_f02 / "params.yaml"
+    if not f02_params_path.exists():
+        raise FileNotFoundError(
+            f"No se encuentra params.yaml del parent f02 para {version}.\n"
+            f"Ruta buscada: {f02_params_path}"
+        )
 
-    # D. Output Procesado (Cache del dataset indexado)
+    with f02_params_path.open("r", encoding="utf-8") as f:
+        f02_params_data = yaml.safe_load(f) or {}
+
+    bands = f02_params_data.get("parameters", {}).get("bands")
+    if bands is None:
+        bands = f02_params_data.get("bands")
+
+    if bands is not None:
+        config["bands"] = bands
+
+    # E. Output Procesado (Cache del dataset indexado)
     processed_base = Path(paths.get("dataset_processed", "datasets/processed"))
     if str(processed_base) == "." or str(processed_base) == "":
         processed_base = project_root / "datasets/processed"
@@ -147,7 +160,10 @@ def _resolve_dynamic_execution_paths(config: Dict[str, Any], project_root: Path,
         processed_filename = f"03_windows_{version}_indexed.parquet"
         config["paths"]["dataset_processed"] = str(processed_base / processed_filename)
     
-    print(f"✅ Configuración Dinámica Cargada: Versión {version} (Parent: {parent_variant})")
+    print(
+        f"✅ Configuración Dinámica Cargada: Versión {version} "
+        f"(Parent f02: {parent_variant_f02})"
+    )
     print(f"📂 Outputs configurados en: {versioned_path}")
 
 

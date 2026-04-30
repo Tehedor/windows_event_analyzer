@@ -8,7 +8,8 @@ services:
       - "8050:8050"
     volumes:
       - ./app:/app
-      - /home/tehe/Work/tfm/datasets/ines/executions/executions:/app/executions
+      - ./executions:/app/executions
+      # - /home/tehe/Work/tfm/datasets/ines/executions/executions:/app/executions
       # - ./files_output/:/output
       # - ./epoch_processed:/app/epoch_processed
       - ./files_output/queries:/app/output/
@@ -18,7 +19,7 @@ services:
     environment:
       DASH_DEBUG: "true"
       SERVER_PORT: "8060"
-      WINDOW_VERSION: "${WINDOW_VERSION:-v001}"
+      WINDOW_VERSION: "${WINDOW_VERSION:-v3_0302}"
       OBS_EVENTS_COLUMN: "OW_events"
       PRED_EVENTS_COLUMN: "PW_events"
       DATASET_PROCESSED_PATH: "/app/epoch_processed"

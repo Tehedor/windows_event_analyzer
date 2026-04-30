@@ -9,7 +9,7 @@ BUILDKIT_CONTAINER="buildx_buildkit_${BUILDER_NAME}0"
 DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
 
 DOCKERHUB_USER="stehedor"
-IMAGE_NAME="mds_windows_app"
+IMAGE_NAME="mds_windows_app_edge"
 TAG="v0"
 
 if [[ -z "$DOCKERHUB_USER" || -z "$IMAGE_NAME" ]]; then
